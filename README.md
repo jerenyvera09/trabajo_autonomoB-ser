@@ -1,100 +1,134 @@
-# 🌐 Sistema de Reportes Infraestructura Univercitaria
+# 🌐 Sistema de Reportes de Infraestructura Universitaria
 
-## 🏛 Universidad Laica Eloy Alfaro de Manabí  
+## 🏛 Universidad Laica Eloy Alfaro de Manabí
+
 **Facultad:** Ciencias de la Vida y Tecnologías  
 **Carrera:** Ingeniería de Software  
 **Asignatura:** Aplicación para el Servidor Web  
-**Docente:** John Cevallos  
+**Docente:** John Cevallos
 
 ---
+
 ## 👥 Integrantes del Grupo
 
-- **Vera Mero Jereny Jhonnayker**  
-- **Zambrano Gavilanes Cinthia Dayanna**  
+- **Vera Mero Jereny Jhonnayker**
+- **Zambrano Gavilanes Cinthia Dayanna**
 - **Delgado Campuzano Carlos Alberto**
 
 ---
 
-## 📖 Descripción General
+## 📖 Descripción general
 
-El **Sistema de Reportes de infraestructura univercitaria** es una aplicación web orientada a la gestión y seguimiento de reportes realizados por los usuarios sobre incidentes en la comunidad (como daños de infraestructura, problemas públicos, entre otros).  
+El **Sistema de Reportes de Infraestructura Universitaria** es una aplicación web diseñada para gestionar y dar seguimiento a reportes de incidentes en la comunidad universitaria (daños en infraestructura, problemas de seguridad, necesidades de mantenimiento, etc.).
 
-Los reportes pueden incluir **archivos adjuntos (imágenes, videos)**, ser clasificados por **categorías y estados**, y etiquetar a **autoridades o áreas responsables** mediante un sistema de **etiquetas y menciones**, mejorando así la visibilidad y atención de cada caso.
-
----
-
-## 🎯 Objetivo General del Proyecto
-
-Desarrollar un **sistema distribuido completo**, aplicando múltiples tecnologías y lenguajes de programación para demostrar competencias en **arquitectura full-stack, integración de servicios REST, GraphQL y WebSockets**, junto con un **frontend interactivo** y **funcionalidades en tiempo real**.
+Los reportes pueden incluir **archivos adjuntos (imágenes, videos)**, clasificarse por **categorías y estados**, y mencionar a **autoridades o áreas responsables** mediante etiquetas y menciones para mejorar la atención y trazabilidad.
 
 ---
 
-## ⚙️ Arquitectura del Sistema
+## 🎯 Objetivo general
 
-El sistema se desarrollará bajo una **arquitectura distribuida**, compuesta por los siguientes módulos:
-
-1. **Servicio REST (Backend Principal)**  
-   - CRUD de entidades principales  
-   - Autenticación y autorización  
-   - Validaciones y manejo de errores  
-
-2. **Servicio GraphQL**  
-   - Consultas avanzadas de reportes y análisis de datos  
-   - Integración con el servicio REST  
-
-3. **Servidor WebSocket**  
-   - Notificaciones y actualizaciones en tiempo real  
-   - Canales para comunicación entre usuarios y autoridades  
-
-4. **Frontend Interactivo**  
-   - Dashboard de reportes  
-   - Integración con REST, GraphQL y WebSockets  
-   - Interfaz adaptable y dinámica  
+Construir un **sistema distribuido** que demuestre competencias en desarrollo full-stack: APIs REST y GraphQL, comunicación en tiempo real (WebSockets), integración entre servicios y una interfaz de usuario interactiva.
 
 ---
 
-## 🧩 Tecnologías Principales
+## ⚙️ Arquitectura del sistema
 
-| Componente | Lenguaje / Framework | Descripción |
-|-------------|----------------------|--------------|
-| Backend REST | **Python (FastAPI / Flask)** | Gestión principal del sistema y autenticación |
-| GraphQL API | **TypeScript (NestJS + Apollo Server)** | Consultas y mutaciones complejas |
-| WebSocket Server | **Go (Golang)** | Comunicación y notificaciones en tiempo real |
-| Frontend | **React / Vue / Angular** | Dashboard e interacción con usuarios |
-| Base de Datos | **PostgreSQL / MySQL** | Almacenamiento de datos relacionales |
-| Control de Versiones | **Git + GitHub** | Repositorio grupal y control de commits |
+La solución propuesta es modular y distribuida, con los siguientes componentes principales:
 
----
+1. **Servicio REST (backend principal)**
+   - CRUD de las entidades principales
+   - Autenticación y autorización
+   - Validaciones y manejo de errores
 
-## 🧱 Modelo de Datos
+2. **Servicio GraphQL**
+   - Consultas y agregaciones avanzadas
+   - Integración con el backend REST
 
-El sistema se basa en un modelo relacional que incluye entidades como:  
-**Usuario, Rol, Reporte, Comentario, EstadoReporte, Categoría, ArchivoAdjunto, Área, Puntuación y Etiqueta**, con relaciones que permiten la trazabilidad y gestión completa de cada reporte.  
+3. **Servidor WebSocket**
+   - Notificaciones y actualizaciones en tiempo real
+   - Canales para comunicación entre usuarios y autoridades
 
-> 📊 *El diagrama entidad-relación se encuentra incluido en el repositorio para mayor detalle.*
-
----
-
-
-
-## 📌 Lineamientos de Desarrollo
-
-- Repositorio grupal en GitHub con commits semanales y mensajes descriptivos.  
-- Documentación completa de APIs y componentes.  
-- Validaciones, seguridad y manejo estructurado de errores.  
-- Integración fluida entre servicios y consistencia de datos.  
-- Dashboard interactivo y experiencia de usuario unificada.  
+4. **Frontend interactivo**
+   - Panel (dashboard) de reportes
+   - Integración con REST, GraphQL y WebSockets
+   - Interfaz responsiva y accesible
 
 ---
 
-## 🚀 Próximos Pasos
+## 🧩 Tecnologías (sugeridas)
 
-- [ ] Definir responsabilidades individuales y tecnologías por integrante.  
-- [ ] Implementar los servicios REST y GraphQL.  
-- [ ] Desarrollar la capa de WebSockets en **Go** para notificaciones.  
-- [ ] Crear e integrar el frontend con todas las capas.  
-- [ ] Documentar endpoints, consultas y despliegue local.  
+| Componente           |    Lenguaje / Framework | Ejemplo                                   |
+| -------------------- | ----------------------: | ----------------------------------------- |
+| Backend REST         |                  Python | FastAPI o Flask                           |
+| GraphQL API          |              TypeScript | NestJS + Apollo Server                    |
+| WebSocket Server     |             Go (Golang) | Server para notificaciones en tiempo real |
+| Frontend             | JavaScript / TypeScript | React, Vue o Angular                      |
+| Base de datos        |      PostgreSQL / MySQL | Almacenamiento relacional                 |
+| Control de versiones |            Git + GitHub | Repositorio y flujo de branches           |
 
 ---
 
-📂 **Repositorio oficial del proyecto:** *(https://github.com/jerenyvera09/trabajo_autonomoB-ser.git)*
+## 🧱 Modelo de datos (resumen)
+
+Entidades principales: Usuario, Rol, Reporte, Comentario, EstadoReporte, Categoría, ArchivoAdjunto, Área, Puntuación y Etiqueta.  
+El diagrama entidad-relación se encuentra en el repositorio para detalle completo.
+
+---
+
+## 📌 Lineamientos de desarrollo
+
+- Uso de control de versiones con ramas y commits descriptivos.
+- Documentación de las APIs (OpenAPI / GraphQL schema) y del despliegue.
+- Pruebas unitarias y de integración para componentes críticos.
+- Manejo seguro de autenticación, autorización y validación de datos.
+
+---
+
+## 🚀 Próximos pasos / Tareas iniciales
+
+- [ ] Definir responsabilidades por integrante y stack tecnológico.
+- [ ] Especificar endpoints REST y esquema GraphQL.
+- [ ] Implementar el backend REST básico (auth + CRUD de Reportes).
+- [ ] Implementar el servidor WebSocket para notificaciones.
+- [ ] Crear un prototipo de frontend y conectarlo con el backend.
+
+## 📁 Estructura del repositorio (resumen)
+
+Este repositorio contiene, de forma aproximada, las siguientes carpetas:
+
+- `backend/` → Código del servicio REST (Python / FastAPI)
+- `graphql/` → Servicio GraphQL (TypeScript / NestJS) ← opcional según implementación
+- `websocket/` → Servidor de WebSockets (Go / otro)
+- `frontend/` → Aplicación cliente (React / Vue / Angular)
+- `docs/` → Diagramas (ER, arquitectura), especificaciones y entregables
+- `scripts/` → Scripts útiles (migraciones, seeds, utilidades)
+- `README.md` → Documentación principal
+
+---
+
+## 🔑 Variables de entorno (ejemplo)
+
+Backend (`backend/.env`):
+
+- `DATABASE_URL` e.g. `postgresql://user:pass@localhost:5432/dbname`
+- `SECRET_KEY`
+- `DEBUG` (True/False)
+
+Frontend (`frontend/.env.development`):
+
+- `REACT_APP_API_BASE_URL` e.g. `http://localhost:8000`
+
+---
+
+## 🟡 Estado del proyecto (breve)
+
+- [x] Documento de objetivos y reglas (README)
+- [ ] Backend REST: endpoints básicos (CRUD)
+- [ ] GraphQL: esquema y consultas de reportes
+- [ ] WebSocket: notificaciones en tiempo real
+- [ ] Frontend: dashboard interactivo
+- [ ] Tests y documentación de endpoints
+
+---
+
+📂 **Repositorio oficial:** https://github.com/jerenyvera09/trabajo_autonomoB-ser
