@@ -6,6 +6,7 @@
 **Carrera:** Ingeniería de Software  
 **Asignatura:** Aplicación para el Servidor Web  
 **Docente:** John Cevallos
+**Semestre:** 2024-2025 5to Semestre "B"
 
 ---
 
