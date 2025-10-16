@@ -7,7 +7,7 @@
 **Asignatura:** Aplicación para el Servidor Web  
 **Docente:** John Cevallos  
 **Semestre:** 2024-2025 5to Semestre "B"  
-**Semana:** 5 (Commit 3) - Integración de Servicios y Frontend
+**Semana:** 6 (Commit 4) - Integración Completa, Dashboard y Documentación Final
 
 ---
 
@@ -42,7 +42,7 @@ Construir un **sistema distribuido** que demuestre competencias en desarrollo fu
 
 ---
 
-## ⚙️ Arquitectura del sistema (Semana 5)
+## ⚙️ Arquitectura del sistema (Semana 6)
 
 La solución es modular y distribuida, con **cuatro componentes principales**:
 
@@ -94,7 +94,7 @@ Diagrama de arquitectura (referencia):
 - Interfaz moderna y responsiva
 - Integración con los 3 servicios backend
 - Notificaciones en tiempo real
-- Dashboard interactivo
+- Dashboard interactivo (listas REST/GraphQL + KPIs)
 
 ---
 
@@ -154,7 +154,7 @@ npm run dev
 
 ---
 
-## 🧪 Pruebas de integración
+## 🧪 Pruebas de integración (Semana 6)
 
 ### Verificar que todos los servicios estén activos
 
@@ -179,11 +179,21 @@ Abre http://localhost:4000/graphql y ejecuta:
 ```graphql
 query {
   reports {
-    id
-    title
-    description
-    status
-    priority
+    items {
+      id
+      title
+      description
+      status
+      priority
+    }
+    total
+  }
+  reportsAnalytics {
+    total
+    byStatus {
+      clave
+      valor
+    }
   }
 }
 ```
@@ -214,6 +224,14 @@ También puedes conectarte por WebSocket y escuchar los mensajes:
   > new_report
   ```
   Al enviar `new_report`, el servidor emitirá `{ "event": "new_report", "message": "Se ha creado un nuevo reporte" }`.
+
+Para cambios de reporte (Semana 6), también puedes enviar:
+
+```bash
+curl -X POST http://localhost:8080/notify/reports \
+  -H "Content-Type: application/json" \
+  -d '{"event":"update_report","message":"Reporte actualizado"}'
+```
 
 ---
 
@@ -274,7 +292,7 @@ sistema_de_informes/
 
 ---
 
-## ✅ Funcionalidades completadas (Semana 5)
+## ✅ Funcionalidades completadas (Semana 6)
 
 ### REST API
 
@@ -288,15 +306,17 @@ sistema_de_informes/
 
 - [x] Schema con tipos Report
 - [x] Query `reports` que consume REST
+- [x] `report(id)` y `reportsAnalytics` (KPIs)
 - [x] Playground interactivo
 - [x] Manejo de errores
 
 ### WebSocket
 
 - [x] Conexión WebSocket bidireccional
-- [x] Broadcast a todos los clientes
-- [x] Endpoint POST `/notify` para eventos
+- [x] Broadcast a todos los clientes y por salas
+- [x] Endpoint POST `/notify` para eventos (incluye `update_report`)
 - [x] Detección de evento `new_report`
+- [x] Keepalive ping/pong
 
 ### Frontend
 
@@ -304,7 +324,7 @@ sistema_de_informes/
 - [x] Integración con GraphQL
 - [x] Conexión WebSocket persistente
 - [x] Notificaciones en tiempo real
-- [x] Dashboard interactivo
+- [x] Dashboard interactivo (listas + KPIs GraphQL)
 - [x] Diseño responsivo
 
 ---
@@ -313,7 +333,8 @@ sistema_de_informes/
 
 - **Commit 1 (Semana 3)**: Diseño de BD y esquema inicial
 - **Commit 2 (Semana 4)**: Implementación de servicios individuales
-- **Commit 3 (Semana 5)**: Integración completa y frontend ✅ ACTUAL
+- **Commit 3 (Semana 5)**: Integración completa y frontend
+- **Commit 4 (Semana 6)**: Dashboard con KPIs, handlers de errores, docs finales ✅ ACTUAL
 
 ---
 
@@ -332,7 +353,7 @@ Este proyecto es de uso académico para la materia Aplicación para el Servidor 
 
 ---
 
-✅ **Proyecto listo para evaluación - Semana 5 (Commit 3)**  
+✅ **Proyecto listo para evaluación - Semana 6 (Commit 4)**  
 🎓 **Universidad Laica Eloy Alfaro de Manabí**
 
 4. **Frontend interactivo**
@@ -371,13 +392,36 @@ El diagrama entidad-relación se encuentra en el repositorio para detalle comple
 
 ---
 
-## 🚀 Próximos pasos / Tareas iniciales
+## � Capturas del Dashboard
 
-- [ ] Definir responsabilidades por integrante y stack tecnológico.
-- [ ] Especificar endpoints REST y esquema GraphQL.
-- [ ] Implementar el backend REST básico (auth + CRUD de Reportes).
-- [ ] Implementar el servidor WebSocket para notificaciones.
-- [ ] Crear un prototipo de frontend y conectarlo con el backend.
+Coloca las capturas en `sistema_de_informes/docs/dashboard_capturas/` con estos nombres sugeridos (o ajusta):
+
+- `01_lista_rest.png` — Lista de reportes desde REST
+- `02_lista_graphql.png` — Lista de reportes desde GraphQL
+- `03_notificacion_ws.png` — Notificación WS en tiempo real
+- `04_estadisticas_kpis.png` — KPIs de `reportsAnalytics`
+
+Luego, enlázalas aquí para la presentación final.
+
+## 🚀 Comandos de ejecución (resumen)
+
+En cuatro terminales separadas (Windows CMD):
+
+```cmd
+cd sistema_de_informes\services\rest-api & uvicorn main:app --reload --port 8000
+```
+
+```cmd
+cd sistema_de_informes\services\graphql & npm install & npm run dev
+```
+
+```cmd
+cd sistema_de_informes\services\ws & go run main.go
+```
+
+```cmd
+cd sistema_de_informes\apps\frontend & npm install & npm run dev
+```
 
 ## 📁 Estructura del repositorio (resumen)
 

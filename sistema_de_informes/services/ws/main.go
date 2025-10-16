@@ -2,39 +2,141 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 )
 
-var clientes = make(map[*websocket.Conn]bool)
-var broadcast = make(chan []byte, 256)
+// --- Semana 6: Salas/Canales, auth opcional y notificaciones por sala ---
+
+type Broadcast struct {
+	Room string
+	Data []byte
+}
+
+var (
+	rooms   = make(map[string]map[*websocket.Conn]bool)
+	roomsMu sync.RWMutex
+	// Canal de broadcast por sala
+	broadcast = make(chan Broadcast, 256)
+
+	// Config
+	allowedOrigins = parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS")) // CSV o vacío para permitir todos (dev)
+	requireAuth    = os.Getenv("WS_REQUIRE_AUTH") == "1"
+	jwtSecret      = os.Getenv("WS_JWT_SECRET")
+)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// Para demo: abierto. En producción restringir dominios.
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		if len(allowedOrigins) == 0 {
+			return true // demo/dev
+		}
+		origin := r.Header.Get("Origin")
+		for _, o := range allowedOrigins {
+			if strings.EqualFold(o, origin) {
+				return true
+			}
+		}
+		return false
+	},
+}
+
+func parseAllowedOrigins(csv string) []string {
+	if strings.TrimSpace(csv) == "" {
+		return nil
+	}
+	parts := strings.Split(csv, ",")
+	var out []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func getRoom(r *http.Request) string {
+	room := r.URL.Query().Get("room")
+	if room == "" {
+		room = "general"
+	}
+	return room
+}
+
+func authOK(r *http.Request) bool {
+	if !requireAuth {
+		return true
+	}
+	token := ""
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		token = strings.TrimSpace(auth[7:])
+	}
+	if token == "" {
+		token = r.URL.Query().Get("token")
+	}
+	if token == "" || jwtSecret == "" {
+		return false
+	}
+	_, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(jwtSecret), nil
+	})
+	return err == nil
+}
+
+func addToRoom(room string, c *websocket.Conn) {
+	roomsMu.Lock()
+	if rooms[room] == nil {
+		rooms[room] = make(map[*websocket.Conn]bool)
+	}
+	rooms[room][c] = true
+	roomsMu.Unlock()
+}
+
+func removeFromRoom(room string, c *websocket.Conn) {
+	roomsMu.Lock()
+	if conns, ok := rooms[room]; ok {
+		delete(conns, c)
+		if len(conns) == 0 {
+			delete(rooms, room)
+		}
+	}
+	roomsMu.Unlock()
 }
 
 func manejarConexiones(w http.ResponseWriter, r *http.Request) {
+	if !authOK(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("upgrade error:", err)
 		return
 	}
-	defer conn.Close()
 
-	clientes[conn] = true
-	log.Printf("cliente conectado (%d)\n", len(clientes))
+	room := getRoom(r)
+	addToRoom(room, conn)
+	log.Printf("cliente conectado en sala '%s' (total salas: %d)\n", room, len(rooms))
 
-	// Higiene: límites y keepalive
+	// Higiene: límites y keepalive (lectura)
 	conn.SetReadLimit(1 << 20)
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
@@ -42,6 +144,23 @@ func manejarConexiones(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	// Ping periódico (escritura) para mantener la conexión viva
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				deadline := time.Now().Add(5 * time.Second)
+				_ = conn.WriteControl(websocket.PingMessage, []byte{}, deadline)
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	// Bucle de lectura de mensajes del cliente
 	for {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -52,7 +171,7 @@ func manejarConexiones(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// SEMANA 5: Detectar evento "new_report" y emitir notificación
+		// Detectar evento "new_report" y emitir a la sala actual
 		msgStr := string(msg)
 		if msgStr == "new_report" {
 			notificacion := map[string]string{
@@ -61,43 +180,89 @@ func manejarConexiones(w http.ResponseWriter, r *http.Request) {
 			}
 			jsonData, _ := json.Marshal(notificacion)
 			select {
-			case broadcast <- jsonData:
-				log.Println("Notificación de nuevo reporte enviada a todos los clientes")
+			case broadcast <- Broadcast{Room: room, Data: jsonData}:
+				log.Printf("Notificación 'new_report' enviada a sala '%s'\n", room)
 			default:
 				log.Println("broadcast buffer lleno; descartando mensaje")
 			}
 		} else {
-			// Reenviar otros mensajes normalmente
+			// Reenviar otros mensajes al canal actual
 			select {
-			case broadcast <- msg:
+			case broadcast <- Broadcast{Room: room, Data: msg}:
 			default:
 				log.Println("broadcast buffer lleno; descartando mensaje")
 			}
 		}
 	}
 
-	delete(clientes, conn)
-	log.Printf("cliente desconectado (%d)\n", len(clientes))
+	close(done)
+	conn.Close()
+	removeFromRoom(room, conn)
+	log.Printf("cliente desconectado de sala '%s'\n", room)
 }
 
 func manejarMensajes() {
 	for msg := range broadcast {
-		for c := range clientes {
+		// Snapshot de conexiones de la sala
+		roomsMu.RLock()
+		var targets []*websocket.Conn
+		if conns, ok := rooms[msg.Room]; ok {
+			for c := range conns {
+				targets = append(targets, c)
+			}
+		}
+		roomsMu.RUnlock()
+
+		// Enviar a cada conexión
+		for _, c := range targets {
 			c.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if err := c.WriteMessage(websocket.TextMessage, msg.Data); err != nil {
 				log.Println("write error:", err)
-				c.Close()
-				delete(clientes, c)
+				// Remover conexión con error
+				go func(cc *websocket.Conn) {
+					cc.Close()
+					// Buscar y eliminar de cualquier sala
+					roomsMu.Lock()
+					for room, conns := range rooms {
+						if _, ok := conns[cc]; ok {
+							delete(conns, cc)
+							if len(conns) == 0 {
+								delete(rooms, room)
+							}
+						}
+					}
+					roomsMu.Unlock()
+				}(c)
 			}
 		}
 	}
 }
 
-// SEMANA 5: Endpoint HTTP para simular eventos
+// Endpoint HTTP para simular eventos por sala
 func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Sala desde la ruta /notify/{room} o query ?room=
+	path := r.URL.Path
+	room := "general"
+	if strings.HasPrefix(path, "/notify/") {
+		rest := strings.TrimPrefix(path, "/notify/")
+		if rest != "" {
+			if i := strings.Index(rest, "/"); i >= 0 {
+				room = rest[:i]
+			} else {
+				room = rest
+			}
+		}
+	} else {
+		// compatibilidad con /notify
+		q := r.URL.Query().Get("room")
+		if q != "" {
+			room = q
+		}
 	}
 
 	body, _ := io.ReadAll(r.Body)
@@ -114,16 +279,19 @@ func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 			if msg, ok := payload["message"].(string); ok {
 				notificacion["message"] = msg
 			}
+			if ev, ok := payload["event"].(string); ok && strings.TrimSpace(ev) != "" {
+				notificacion["event"] = ev
+			}
 		}
 	}
 
 	jsonData, _ := json.Marshal(notificacion)
 	select {
-	case broadcast <- jsonData:
-		log.Printf("Notificación enviada: %s\n", string(jsonData))
+	case broadcast <- Broadcast{Room: room, Data: jsonData}:
+		log.Printf("Notificación enviada a sala '%s': %s\n", room, string(jsonData))
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","message":"Notificación enviada"}`))
+		w.Write([]byte(`{"status":"ok","room":"` + room + `"}`))
 	default:
 		http.Error(w, "Broadcast channel full", http.StatusServiceUnavailable)
 	}
@@ -132,11 +300,12 @@ func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 func main() {
 	mux := http.NewServeMux()
 
-	// Endpoint WS
+	// Endpoint WS (handshake: ws://host:port/ws?room=reports[&token=...])
 	mux.HandleFunc("/ws", manejarConexiones)
 
-	// SEMANA 5: Endpoint para simular notificaciones
+	// Endpoints para notificar por sala: /notify (query room) o /notify/{room}
 	mux.HandleFunc("/notify", notifyNewReport)
+	mux.HandleFunc("/notify/", notifyNewReport)
 
 	// Healthcheck
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +313,7 @@ func main() {
 		w.Write([]byte(`{"status":"ok","service":"ws"}`))
 	})
 
-	// CORS simple para handshake
+	// CORS simple para handshake y endpoints HTTP
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -156,8 +325,13 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
+	port := os.Getenv("WS_PORT")
+	if strings.TrimSpace(port) == "" {
+		port = "8080"
+	}
+
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":" + port,
 		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -167,7 +341,7 @@ func main() {
 	go manejarMensajes()
 
 	go func() {
-		log.Println("Servidor WebSocket en :8080")
+		log.Printf("Servidor WebSocket en :%s\n", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)
 		}
