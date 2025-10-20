@@ -1,5 +1,3 @@
-import { GraphQLResolveInfo } from "graphql";
-
 // Datos en memoria para la Semana 4 (mock)
 const reportes = [
   {
@@ -90,13 +88,28 @@ export const resolvers = {
         porCategoria: mapToKpi(porCategoria),
       };
     },
+    // SEMANA 5: Integración con REST API
+    reports: async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/reports");
+        if (!response.ok) {
+          throw new Error(`REST API error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching from REST API:", error);
+        // Fallback a datos vacíos si el REST no está disponible
+        return [];
+      }
+    },
   },
   Mutation: {
     crearReporte: (
       _: unknown,
       args: { input: { titulo: string; descripcion?: string; categoria?: string } },
       __context: unknown,
-      __info: GraphQLResolveInfo
+      __info: unknown
     ) => {
       // Validación básica de entrada
       const titulo = (args.input.titulo ?? "").trim();

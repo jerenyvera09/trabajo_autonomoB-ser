@@ -1,0 +1,132 @@
+# Diagrama de Arquitectura - Sistema de Reportes ULEAM
+
+## Semana 5: Integración completa de servicios
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│                       USUARIO FINAL (Navegador)                        │
+│                                                                        │
+└───────────────────────────┬────────────────────────────────────────────┘
+                            │
+                            │ HTTP (3000)
+                            ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                                                                        │
+│                    FRONTEND - React + TypeScript                       │
+│                       http://localhost:3000                            │
+│                                                                        │
+│  Características:                                                      │
+│  • Interfaz responsiva y moderna                                       │
+│  • Consumo de REST API y GraphQL                                       │
+│  • Conexión WebSocket persistente                                      │
+│  • Notificaciones en tiempo real                                       │
+│  • Dashboard de reportes                                               │
+│                                                                        │
+└──────┬─────────────────────────┬─────────────────────┬────────────────┘
+       │                         │                     │
+       │ HTTP GET                │ HTTP POST           │ WebSocket
+       │ /api/v1/reports         │ GraphQL Query       │ Bidireccional
+       │                         │                     │
+       ▼                         ▼                     ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   REST API      │    │    GraphQL      │    │   WebSocket     │
+│   (FastAPI)     │◄───┤   (Apollo)      │    │   (Gorilla)     │
+│   Python 3.12   │    │   TypeScript    │    │   Go 1.23       │
+│                 │    │                 │    │                 │
+│   Puerto: 8000  │    │   Puerto: 4000  │    │   Puerto: 8080  │
+│                 │    │                 │    │                 │
+│  Funciones:     │    │  Funciones:     │    │  Funciones:     │
+│  • CRUD Reportes│    │  • Queries      │    │  • Broadcast    │
+│  • Auth JWT     │    │  • Consume REST │    │  • Eventos RT   │
+│  • Validaciones │    │  • Agregaciones │    │  • Keepalive    │
+│  • CORS         │    │  • Playground   │    │  • Notify API   │
+└────────┬────────┘    └─────────────────┘    └─────────────────┘
+         │                     ▲
+         │                     │
+         │                     │ fetch()
+         │                     │ http://localhost:8000
+         │                     │ /api/v1/reports
+         │                     │
+         ▼                     │
+┌──────────────────────────────┴────────────────────────────────┐
+│                                                                │
+│                   BASE DE DATOS SQLite                         │
+│                      (app.db)                                  │
+│                                                                │
+│  Tablas principales:                                           │
+│  • usuarios                                                    │
+│  • reportes                                                    │
+│  • categorias                                                  │
+│  • estados_reporte                                             │
+│  • comentarios                                                 │
+│  • archivos_adjuntos                                           │
+│  • y más...                                                    │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+## Flujo de datos
+
+### 1. Consulta de reportes vía REST
+```
+Frontend → REST API (GET /api/v1/reports) → SQLite → JSON → Frontend
+```
+
+### 2. Consulta de reportes vía GraphQL
+```
+Frontend → GraphQL (POST /graphql) → REST API → SQLite → JSON → GraphQL → Frontend
+```
+
+### 3. Notificaciones en tiempo real
+```
+Evento → WebSocket Server → Broadcast → Todos los clientes conectados → Frontend
+```
+
+## Puertos utilizados
+
+| Servicio | Puerto | URL |
+|---------|--------|-----|
+| Frontend | 3000 | http://localhost:3000 |
+| REST API | 8000 | http://localhost:8000 |
+| GraphQL | 4000 | http://localhost:4000/graphql |
+| WebSocket | 8080 | ws://localhost:8080/ws |
+
+## Comunicación entre servicios
+
+1. **Frontend ↔ REST API**: HTTP requests directos
+2. **Frontend ↔ GraphQL**: HTTP POST con queries GraphQL
+3. **Frontend ↔ WebSocket**: Conexión WebSocket persistente
+4. **GraphQL → REST API**: Fetch interno desde resolvers
+5. **WebSocket**: Broadcast unidireccional a todos los clientes
+
+## Características de seguridad
+
+- ✅ CORS habilitado en todos los servicios backend
+- ✅ Autenticación JWT en REST API
+- ✅ Validaciones de entrada en todos los servicios
+- ✅ Manejo de errores estructurado
+- ✅ WebSocket con reconexión automática
+
+## Tecnologías por capa
+
+**Presentación (Frontend)**
+- React 18.2
+- TypeScript
+- Vite (Build tool)
+- CSS moderno
+
+**Lógica de negocio (Backend)**
+- Python 3.12 + FastAPI
+- TypeScript + Apollo Server
+- Go 1.23 + Gorilla WebSocket
+
+**Persistencia**
+- SQLite 3.x
+- SQLAlchemy ORM
+
+---
+
+✅ Arquitectura completa - Semana 5 (Commit 3)
+📅 Fecha: 19 de octubre de 2025
+🎓 ULEAM - Ingeniería de Software

@@ -1,4 +1,5 @@
 // Esquema inicial centrado en Reportes para pruebas de Semana 4
+// Semana 5: Se añade tipo Report compatible con REST API
 export const typeDefs = `
   type Reporte {
     id: ID!
@@ -7,6 +8,16 @@ export const typeDefs = `
     estado: String!
     categoria: String
     creadoEn: String!
+  }
+
+  type Report {
+    id: ID!
+    title: String!
+    description: String!
+    status: String
+    priority: String
+    location: String
+    created_at: String
   }
 
   enum ReporteSortBy {
@@ -47,6 +58,8 @@ export const typeDefs = `
     health: String!
     # Resumen/KPIs para capa de reportes
     resumenReportes: ResumenReportes!
+    # Semana 5: Query que consume REST API
+    reports: [Report!]!
   }
 
   input CrearReporteInput {

@@ -1,7 +1,7 @@
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
-import { typeDefs } from "./schema";
-import { resolvers } from "./resolvers/reportes";
+import { typeDefs } from "./schema.js";
+import { resolvers } from "./resolvers/reportes.js";
 
 // Servidor GraphQL básico para reportes
 async function bootstrap() {
