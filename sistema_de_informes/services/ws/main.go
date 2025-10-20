@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -49,10 +51,28 @@ func manejarConexiones(w http.ResponseWriter, r *http.Request) {
 		if msgType != websocket.TextMessage && msgType != websocket.BinaryMessage {
 			continue
 		}
-		select {
-		case broadcast <- msg:
-		default:
-			log.Println("broadcast buffer lleno; descartando mensaje")
+
+		// SEMANA 5: Detectar evento "new_report" y emitir notificación
+		msgStr := string(msg)
+		if msgStr == "new_report" {
+			notificacion := map[string]string{
+				"event":   "new_report",
+				"message": "Se ha creado un nuevo reporte",
+			}
+			jsonData, _ := json.Marshal(notificacion)
+			select {
+			case broadcast <- jsonData:
+				log.Println("Notificación de nuevo reporte enviada a todos los clientes")
+			default:
+				log.Println("broadcast buffer lleno; descartando mensaje")
+			}
+		} else {
+			// Reenviar otros mensajes normalmente
+			select {
+			case broadcast <- msg:
+			default:
+				log.Println("broadcast buffer lleno; descartando mensaje")
+			}
 		}
 	}
 
@@ -73,11 +93,50 @@ func manejarMensajes() {
 	}
 }
 
+// SEMANA 5: Endpoint HTTP para simular eventos
+func notifyNewReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	notificacion := map[string]string{
+		"event":   "new_report",
+		"message": "Se ha creado un nuevo reporte",
+	}
+
+	if len(body) > 0 {
+		var payload map[string]interface{}
+		if err := json.Unmarshal(body, &payload); err == nil {
+			if msg, ok := payload["message"].(string); ok {
+				notificacion["message"] = msg
+			}
+		}
+	}
+
+	jsonData, _ := json.Marshal(notificacion)
+	select {
+	case broadcast <- jsonData:
+		log.Printf("Notificación enviada: %s\n", string(jsonData))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok","message":"Notificación enviada"}`))
+	default:
+		http.Error(w, "Broadcast channel full", http.StatusServiceUnavailable)
+	}
+}
+
 func main() {
 	mux := http.NewServeMux()
 
 	// Endpoint WS
 	mux.HandleFunc("/ws", manejarConexiones)
+
+	// SEMANA 5: Endpoint para simular notificaciones
+	mux.HandleFunc("/notify", notifyNewReport)
 
 	// Healthcheck
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
