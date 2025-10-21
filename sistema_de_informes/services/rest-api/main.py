@@ -26,8 +26,41 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 @app.get("/")
+def root():
+    return {"status": "ok", "service": "REST API"}
+
+@app.get("/health")
 def health():
-    return {"status": "ok", "service": "rest-api"}
+    return {"status": "ok", "service": "REST API"}
+
+@app.get("/api/v1/reports")
+def get_reports():
+    """Endpoint genérico para integración con GraphQL y Frontend"""
+    # Retorna una lista simplificada sin autenticación para la integración
+    import sqlite3
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT id_reporte, titulo, descripcion, ubicacion, id_estado, creado_en
+            FROM reportes
+            ORDER BY creado_en DESC
+        """)
+        reportes = cursor.fetchall()
+        return [
+            {
+                "id": str(r[0]),
+                "title": r[1],
+                "description": r[2] or "",
+                "status": "Abierto" if r[4] == 1 else "En Proceso" if r[4] == 2 else "Cerrado",
+                "priority": "Media",
+                "location": r[3] or "",
+                "created_at": r[5] or ""
+            }
+            for r in reportes
+        ]
+    finally:
+        conn.close()
 
 # Routers
 app.include_router(auth_router)

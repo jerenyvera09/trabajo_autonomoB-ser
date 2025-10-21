@@ -1,33 +1,116 @@
 # 🧩 REST API — Integrante 1 (Python / FastAPI)
 
-Implementación del **Servicio REST** correspondiente a la **Semana 4 – Commit 2**, completamente funcional y listo para evaluación.  
-Incluye **autenticación JWT**, **CRUD completo por entidad**, **validaciones**, **manejo estructurado de errores**, y **documentación automática** (Swagger / ReDoc).  
-Base de datos por defecto: **SQLite (local)**.
+Implementación del *Servicio REST* correspondiente a las *Semanas 4 y 5*, completamente funcional y listo para evaluación.  
+Incluye *autenticación JWT, **CRUD completo por entidad, **validaciones, **manejo estructurado de errores, **documentación automática* (Swagger / ReDoc), y *soporte CORS* para integración con Frontend y GraphQL.  
+Base de datos por defecto: *SQLite (local)*.
 
 ---
 
 ## ⚙️ 1) Requisitos e instalación
 
-**Requisitos previos**
+*Requisitos previos*
 
-- Python **3.10+** (probado con **3.12**)
-- Librerías listadas en [`requirements.txt`](requirements.txt)
+- Python *3.10+* (probado con *3.12*)
+- Librerías listadas en [requirements.txt](requirements.txt)
 
-**Instalación**
-
-```bash
-pip install -r requirements.txt
-🚀 2) Configuración y ejecución
-(Opcional) Copia el archivo de entorno:
+*Instalación*
 
 bash
-Copiar código
+pip install -r requirements.txt
+
+
+---
+
+## 🚀 2) Configuración y ejecución
+
+*(Opcional) Copia el archivo de entorno:*
+
+bash
 cp .env.example .env
+
+
 Ajusta las variables según sea necesario:
 
-JWT_SECRET: clave para firmar tokens
+- JWT_SECRET: clave para firmar tokens
+- DATABASE_URL: URL de la base de datos (por defecto sqlite:///./app.db)
 
-DATABASE_URL: URL de la base de datos (por defecto sqlite:///./app.db)
+*Ejecutar el servidor:*
+
+bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+
+El servicio estará disponible en:
+
+- *API*: http://localhost:8000
+- *Health check*: http://localhost:8000/health
+- *Endpoint de integración*: http://localhost:8000/api/v1/reports
+- *Documentación interactiva (Swagger)*: http://localhost:8000/docs
+- *Documentación alternativa (ReDoc)*: http://localhost:8000/redoc
+
+---
+
+## 🔗 3) Endpoints principales (Semana 5)
+
+### Health Check
+
+
+GET /health
+
+
+Respuesta:
+
+json
+{
+  "status": "ok",
+  "service": "REST API"
+}
+
+
+### Listado de Reportes para Integración
+
+
+GET /api/v1/reports
+
+
+Retorna todos los reportes en formato simplificado para consumo por GraphQL y Frontend.
+
+Respuesta de ejemplo:
+
+json
+[
+  {
+    "id": "1",
+    "title": "Fuga de agua en laboratorio",
+    "description": "Se detecta fuga en el lavadero",
+    "status": "Abierto",
+    "priority": "Media",
+    "location": "Edificio A - Piso 2",
+    "created_at": "2025-10-19T10:30:00"
+  }
+]
+
+
+---
+
+## 🧪 4) Pruebas de integración (Semana 5)
+
+*Verificar que el servicio esté funcionando:*
+
+bash
+curl http://localhost:8000/health
+
+
+*Obtener reportes para integración:*
+
+bash
+curl http://localhost:8000/api/v1/reports
+
+
+*CORS habilitado:*
+El servicio permite peticiones desde cualquier origen (allow_origins=["*"]) para facilitar la integración con el frontend y GraphQL durante desarrollo.
+
+---
 
 Ejecuta el servidor:
 
@@ -48,21 +131,21 @@ Endpoints principales
 bash
 Copiar código
 curl -X POST http://localhost:8000/auth/register \
-   -H "Content-Type: application/json" \
-   -d '{"nombre":"Admin","email":"admin@uleam.edu.ec","password":"123456"}'
+ -H "Content-Type: application/json" \
+ -d '{"nombre":"Admin","email":"admin@uleam.edu.ec","password":"123456"}'
 2️⃣ Login (obtener token)
 
 bash
 Copiar código
 curl -X POST http://localhost:8000/auth/login \
-   -H "Content-Type: application/json" \
-   -d '{"email":"admin@uleam.edu.ec","password":"123456"}'
+ -H "Content-Type: application/json" \
+ -d '{"email":"admin@uleam.edu.ec","password":"123456"}'
 3️⃣ Usar token en rutas protegidas
 
 bash
 Copiar código
 curl http://localhost:8000/usuarios \
-   -H "Authorization: Bearer <ACCESS_TOKEN>"
+ -H "Authorization: Bearer <ACCESS_TOKEN>"
 🧱 4) Alcance y entidades cubiertas
 CRUD completo (GET / POST / PUT / DELETE) protegido por JWT en:
 
@@ -106,13 +189,13 @@ Errores estándar:
 409 Conflict: entidad relacionada no puede eliminarse
 
 🧮 6) Matriz de cumplimiento (Docente → Evidencia en código)
-Requisito	Evidencia / Archivo
-CRUD completo	Routers: usuario, rol, reporte, categoria, area, estado, comentario, puntuacion, archivo
-Autenticación / Autorización	auth.py, deps.py con Depends(Auth) en routers
-Documentación REST	main.py — Swagger /docs y ReDoc /redoc
-Validaciones / Errores	schemas/schemas.py + HTTPException (400/401/404/409)
-Base de datos / ORM	db.py, modelos en entities/, tablas generadas en main.py
-Alcance global	Integración futura: GraphQL + WebSockets + Frontend (Semanas 5–7)
+Requisito Evidencia / Archivo
+CRUD completo Routers: usuario, rol, reporte, categoria, area, estado, comentario, puntuacion, archivo
+Autenticación / Autorización auth.py, deps.py con Depends(Auth) en routers
+Documentación REST main.py — Swagger /docs y ReDoc /redoc
+Validaciones / Errores schemas/schemas.py + HTTPException (400/401/404/409)
+Base de datos / ORM db.py, modelos en entities/, tablas generadas en main.py
+Alcance global Integración futura: GraphQL + WebSockets + Frontend (Semanas 5–7)
 
 🧾 7) Base de datos y ORM
 ORM: SQLAlchemy 2.x (Declarative + relaciones).
@@ -135,4 +218,7 @@ Documentación final de arquitectura y demo integrada.
 Autora:
 👩‍💻 Cinthia Zambrano — Integrante 1 (Python / FastAPI)
 📚 Semana 4 — Commit 2
+
+```
+
 ```
