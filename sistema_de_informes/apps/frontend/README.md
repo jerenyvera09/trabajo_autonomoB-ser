@@ -1,12 +1,62 @@
-# 🖥️ Frontend - Sistema de Reportes ULEAM
+# 🖥️ Frontend - Semana 5
 
-Frontend desarrollado con **React + TypeScript + Vite** para la **Semana 5** del proyecto.
+**Responsable:** Equipo completo (integración de todos los servicios)  
+**Objetivo (Semana 5):** Desarrollar el frontend con React + TypeScript + Vite e integrar los tres servicios backend (REST, GraphQL, WebSocket).
+
+---
+
+## 🎯 Plan inicial - Semana 5
 
 Integra los tres servicios backend:
 
-- ✅ **REST API** (Python/FastAPI)
-- ✅ **GraphQL** (TypeScript/Apollo Server)
-- ✅ **WebSocket** (Go/Gorilla)
+- ✅ **REST API** (Python/FastAPI) - Puerto 8000
+- ✅ **GraphQL** (TypeScript/Apollo Server) - Puerto 4000
+- ✅ **WebSocket** (Go/Gorilla) - Puerto 8080
+
+---
+
+## ✅ Tareas completadas - Semana 5
+
+1. **Setup del proyecto**:
+   - Scaffolding con Vite + React + TypeScript
+   - Configuración de ESLint y TypeScript strict mode
+   - Estructura de carpetas: `src/components/`, `src/services/`, `src/hooks/`
+
+2. **Integración con REST API**:
+   - Cliente HTTP con `fetch` API
+   - Endpoint: `GET /api/v1/reports`
+   - Botón "Actualizar REST" para recargar datos
+   - Renderizado de reportes en tarjetas (título, descripción, estado)
+
+3. **Integración con GraphQL**:
+   - Apollo Client configurado
+   - Query GraphQL:
+     ```graphql
+     query {
+       reports {
+         id
+         title
+         description
+         status
+         priority
+       }
+     }
+     ```
+   - Botón "Actualizar GraphQL" para recargar datos
+
+4. **Integración con WebSocket**:
+   - Conexión automática a `ws://localhost:8080/ws`
+   - Indicador visual del estado de conexión (verde/rojo)
+   - Recepción de notificaciones en tiempo real
+   - Banner de notificación animado
+   - Recarga automática de datos al recibir evento `new_report`
+
+5. **UI/UX implementada**:
+   - Diseño responsivo (mobile-first)
+   - Tema oscuro
+   - Tarjetas de reportes con hover effects
+   - Badges de estado con colores diferenciados (Abierto: verde, En Proceso: naranja, Cerrado: rojo)
+   - Notificaciones animadas con auto-dismiss
 
 ---
 
@@ -145,63 +195,18 @@ Deberías ver:
 - **Integrante 1 (Cinthia Zambrano)**: REST API (Python/FastAPI)
 - **Integrante 2 (Carlos Campuzano)**: GraphQL Server (TypeScript/Apollo)
 - **Integrante 3 (Jereny Vera)**: WebSocket Server (Go/Gorilla)
-- **Frontend**: React + TypeScript + Vite (Integración completa)
+- **Frontend**: Integración React + TypeScript + Vite (Equipo completo)
 
 ---
 
-✅ **Frontend listo para evaluación - Semana 5 (Commit 3)**
-{
-files: ['**/*.{ts,tsx}'],
-extends: [
-// Other configs...
+## 🔜 Próximos pasos (Semana 6)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Agregar formularios para crear/editar reportes
+- Implementar filtros y búsqueda
+- Mejorar UI con componentes reutilizables
+- Agregar paginación en listado de reportes
+- Implementar autenticación con JWT
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
+---
 
-},
-])
-
-````
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-````
+**Semana 5 completada — Frontend operativo con integración triple (REST + GraphQL + WebSocket).**`
