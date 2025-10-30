@@ -5,6 +5,7 @@ from entities.puntuacion import Puntuacion
 from schemas.schemas import PuntuacionCreate, PuntuacionOut, PuntuacionUpdate
 from deps import Auth
 from entities.reporte import Reporte
+from ws_notifier import notify_rating_added  # 🔥 WebSocket notifier
 
 router = APIRouter(prefix="/puntuaciones", tags=["Puntuaciones"])
 
@@ -13,7 +14,7 @@ def listar(db: Session = Depends(get_db), user=Depends(Auth)):
     return db.query(Puntuacion).all()
 
 @router.post("", response_model=PuntuacionOut, status_code=201)
-def crear(payload: PuntuacionCreate, db: Session = Depends(get_db), user=Depends(Auth)):
+async def crear(payload: PuntuacionCreate, db: Session = Depends(get_db), user=Depends(Auth)):
     if not db.query(Reporte).get(payload.id_reporte):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reporte no existe")
     obj = Puntuacion(
@@ -22,6 +23,10 @@ def crear(payload: PuntuacionCreate, db: Session = Depends(get_db), user=Depends
         valor=payload.valor
     )
     db.add(obj); db.commit(); db.refresh(obj)
+    
+    # 🔥 NOTIFICAR AL WEBSOCKET
+    await notify_rating_added(obj.id_reporte, obj.valor)
+    
     return obj
 
 @router.get("/{id_puntuacion}", response_model=PuntuacionOut)

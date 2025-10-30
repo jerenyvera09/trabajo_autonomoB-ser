@@ -5,6 +5,7 @@ from entities.comentario import Comentario
 from schemas.schemas import ComentarioCreate, ComentarioOut, ComentarioUpdate
 from deps import Auth
 from entities.reporte import Reporte
+from ws_notifier import notify_comment_added  # 🔥 WebSocket notifier
 
 router = APIRouter(prefix="/comentarios", tags=["Comentarios"])
 
@@ -13,7 +14,7 @@ def listar(db: Session = Depends(get_db), user=Depends(Auth)):
     return db.query(Comentario).all()
 
 @router.post("", response_model=ComentarioOut, status_code=201)
-def crear(payload: ComentarioCreate, db: Session = Depends(get_db), user=Depends(Auth)):
+async def crear(payload: ComentarioCreate, db: Session = Depends(get_db), user=Depends(Auth)):
     if not db.query(Reporte).get(payload.id_reporte):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reporte no existe")
     obj = Comentario(
@@ -22,6 +23,10 @@ def crear(payload: ComentarioCreate, db: Session = Depends(get_db), user=Depends
         contenido=payload.contenido
     )
     db.add(obj); db.commit(); db.refresh(obj)
+    
+    # 🔥 NOTIFICAR AL WEBSOCKET
+    await notify_comment_added(obj.id_reporte, obj.id_comentario, obj.contenido)
+    
     return obj
 
 @router.get("/{id_comentario}", response_model=ComentarioOut)

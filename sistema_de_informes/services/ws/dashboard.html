@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard WebSocket - Sistema de Informes</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .status.connected {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .activity-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .activity-item {
+            padding: 12px;
+            border-left: 3px solid #667eea;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .activity-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .activity-message {
+            margin-top: 5px;
+            color: #333;
+        }
+        
+        .event-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .event-new_report {
+            background: #10b981;
+            color: white;
+        }
+        
+        .event-update_report {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .event-comment_added {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .event-rating_added {
+            background: #ec4899;
+            color: white;
+        }
+        
+        canvas {
+            max-height: 300px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Dashboard en Tiempo Real - Sistema de Informes</h1>
+            <p style="color: #666; margin: 10px 0;">WebSocket conectado a: <code>ws://localhost:8080/ws?room=reports</code></p>
+            <span id="connectionStatus" class="status disconnected">🔴 Desconectado</span>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid">
+            <div class="card">
+                <h2>📝 Total Reportes</h2>
+                <div class="stat-value" id="totalReports">0</div>
+                <div class="stat-label">Actualizaciones en vivo</div>
+            </div>
+            
+            <div class="card">
+                <h2>💬 Comentarios</h2>
+                <div class="stat-value" id="totalComments">0</div>
+                <div class="stat-label">Nuevos comentarios</div>
+            </div>
+            
+            <div class="card">
+                <h2>⭐ Puntuaciones</h2>
+                <div class="stat-value" id="totalRatings">0</div>
+                <div class="stat-label">Ratings recibidos</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid">
+            <div class="card">
+                <h2>📈 Actividad por Tipo</h2>
+                <canvas id="eventChart"></canvas>
+            </div>
+            
+            <div class="card">
+                <h2>⏱️ Eventos en Tiempo Real</h2>
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="card">
+            <h2>🔔 Actividad Reciente</h2>
+            <div class="controls">
+                <button onclick="clearActivity()">Limpiar Historial</button>
+                <button onclick="testEvent('new_report')">Simular Nuevo Reporte</button>
+                <button onclick="testEvent('comment_added')">Simular Comentario</button>
+            </div>
+            <div class="activity-feed" id="activityFeed">
+                <p style="color: #999; text-align: center; padding: 20px;">Esperando eventos...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let ws = null;
+        let reconnectInterval = null;
+        let stats = {
+            reports: 0,
+            comments: 0,
+            ratings: 0
+        };
+        let eventCounts = {
+            new_report: 0,
+            update_report: 0,
+            comment_added: 0,
+            rating_added: 0
+        };
+        let timeline = [];
+
+        // Configuración de gráficos
+        const eventChartCtx = document.getElementById('eventChart').getContext('2d');
+        const timelineChartCtx = document.getElementById('timelineChart').getContext('2d');
+
+        const eventChart = new Chart(eventChartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Nuevos Reportes', 'Actualizaciones', 'Comentarios', 'Puntuaciones'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        const timelineChart = new Chart(timelineChartCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Eventos por Minuto',
+                    data: [],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Conectar WebSocket
+        function connectWebSocket() {
+            const statusEl = document.getElementById('connectionStatus');
+            
+            try {
+                ws = new WebSocket('ws://localhost:8080/ws?room=reports');
+
+                ws.onopen = () => {
+                    console.log('✅ WebSocket conectado');
+                    statusEl.textContent = '🟢 Conectado';
+                    statusEl.className = 'status connected pulse';
+                    clearInterval(reconnectInterval);
+                    addActivity('system', 'Conexión establecida con el servidor WebSocket');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleEvent(data);
+                    } catch (e) {
+                        console.error('Error parseando mensaje:', e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('❌ Error WebSocket:', error);
+                    addActivity('error', 'Error en la conexión WebSocket');
+                };
+
+                ws.onclose = () => {
+                    console.log('🔌 WebSocket desconectado');
+                    statusEl.textContent = '🔴 Desconectado';
+                    statusEl.className = 'status disconnected';
+                    addActivity('system', 'Conexión cerrada. Reintentando...');
+                    
+                    // Reconectar automáticamente
+                    reconnectInterval = setInterval(() => {
+                        console.log('🔄 Reintentando conexión...');
+                        connectWebSocket();
+                    }, 5000);
+                };
+            } catch (e) {
+                console.error('Error creando WebSocket:', e);
+            }
+        }
+
+        // Manejar eventos
+        function handleEvent(data) {
+            const { event, message, data: eventData } = data;
+
+            // Actualizar contadores
+            if (event === 'new_report' || event === 'update_report') {
+                stats.reports++;
+                document.getElementById('totalReports').textContent = stats.reports;
+            } else if (event === 'comment_added') {
+                stats.comments++;
+                document.getElementById('totalComments').textContent = stats.comments;
+            } else if (event === 'rating_added') {
+                stats.ratings++;
+                document.getElementById('totalRatings').textContent = stats.ratings;
+            }
+
+            // Actualizar gráfico de eventos
+            if (eventCounts.hasOwnProperty(event)) {
+                eventCounts[event]++;
+                eventChart.data.datasets[0].data = [
+                    eventCounts.new_report,
+                    eventCounts.update_report,
+                    eventCounts.comment_added,
+                    eventCounts.rating_added
+                ];
+                eventChart.update();
+            }
+
+            // Actualizar timeline
+            updateTimeline();
+
+            // Agregar a feed de actividad
+            addActivity(event, message, eventData);
+        }
+
+        // Actualizar timeline
+        function updateTimeline() {
+            const now = new Date();
+            const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            
+            timeline.push({ time, count: 1 });
+            if (timeline.length > 10) timeline.shift();
+
+            // Agrupar por minuto
+            const grouped = timeline.reduce((acc, item) => {
+                acc[item.time] = (acc[item.time] || 0) + item.count;
+                return acc;
+            }, {});
+
+            timelineChart.data.labels = Object.keys(grouped);
+            timelineChart.data.datasets[0].data = Object.values(grouped);
+            timelineChart.update();
+        }
+
+        // Agregar actividad al feed
+        function addActivity(event, message, data = null) {
+            const feed = document.getElementById('activityFeed');
+            
+            // Limpiar mensaje inicial
+            if (feed.querySelector('p')) {
+                feed.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+
+            const badge = event !== 'system' && event !== 'error' 
+                ? `<span class="event-badge event-${event}">${event.replace('_', ' ').toUpperCase()}</span>`
+                : '';
+
+            item.innerHTML = `
+                <div class="activity-time">${new Date().toLocaleTimeString('es-ES')}</div>
+                <div class="activity-message">
+                    ${badge}
+                    ${message}
+                    ${data ? `<br><small style="color: #666;">${JSON.stringify(data)}</small>` : ''}
+                </div>
+            `;
+
+            feed.insertBefore(item, feed.firstChild);
+
+            // Limitar a 50 items
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // Limpiar actividad
+        function clearActivity() {
+            document.getElementById('activityFeed').innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Esperando eventos...</p>';
+        }
+
+        // Simular evento (para testing)
+        function testEvent(eventType) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket no está conectado');
+                return;
+            }
+            ws.send(eventType);
+            console.log('📤 Evento enviado:', eventType);
+        }
+
+        // Iniciar al cargar
+        window.addEventListener('load', () => {
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ from deps import Auth
 from entities.categoria import Categoria
 from entities.area import Area
 from entities.estado_reporte import EstadoReporte
+from ws_notifier import notify_new_report, notify_update_report  # 🔥 WebSocket notifier
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
 
@@ -15,7 +16,7 @@ def listar(db: Session = Depends(get_db), user=Depends(Auth)):
     return db.query(Reporte).all()
 
 @router.post("", response_model=ReporteOut, status_code=201)
-def crear(payload: ReporteCreate, db: Session = Depends(get_db), user=Depends(Auth)):
+async def crear(payload: ReporteCreate, db: Session = Depends(get_db), user=Depends(Auth)):
     # Validaciones de integridad referencial
     if payload.id_categoria is not None and not db.query(Categoria).get(payload.id_categoria):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categoria no existe")
@@ -33,6 +34,10 @@ def crear(payload: ReporteCreate, db: Session = Depends(get_db), user=Depends(Au
         id_estado=payload.id_estado
     )
     db.add(rep); db.commit(); db.refresh(rep)
+    
+    # 🔥 NOTIFICAR AL WEBSOCKET
+    await notify_new_report(rep.id_reporte, rep.titulo)
+    
     return rep
 
 @router.get("/{id_reporte}", response_model=ReporteOut)
@@ -43,7 +48,7 @@ def obtener(id_reporte: int, db: Session = Depends(get_db), user=Depends(Auth)):
     return rep
 
 @router.put("/{id_reporte}", response_model=ReporteOut)
-def actualizar(id_reporte: int, payload: ReporteUpdate, db: Session = Depends(get_db), user=Depends(Auth)):
+async def actualizar(id_reporte: int, payload: ReporteUpdate, db: Session = Depends(get_db), user=Depends(Auth)):
     rep = db.query(Reporte).get(id_reporte)
     if not rep:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -58,6 +63,10 @@ def actualizar(id_reporte: int, payload: ReporteUpdate, db: Session = Depends(ge
     for k, v in data.items():
         setattr(rep, k, v)
     db.commit(); db.refresh(rep)
+    
+    # 🔥 NOTIFICAR AL WEBSOCKET
+    await notify_update_report(rep.id_reporte, rep.titulo)
+    
     return rep
 
 @router.delete("/{id_reporte}", status_code=204)

@@ -171,24 +171,43 @@ func manejarConexiones(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Detectar evento "new_report" y emitir a la sala actual
+		// Detectar eventos estándar y emitir a la sala actual
 		msgStr := string(msg)
-		if msgStr == "new_report" {
+
+		// Eventos soportados: new_report, update_report, comment_added
+		var eventType string
+		var eventMessage string
+
+		switch msgStr {
+		case "new_report":
+			eventType = "new_report"
+			eventMessage = "Se ha creado un nuevo reporte"
+		case "update_report":
+			eventType = "update_report"
+			eventMessage = "Se ha actualizado un reporte"
+		case "comment_added":
+			eventType = "comment_added"
+			eventMessage = "Se agregó un comentario al reporte"
+		default:
+			// Reenviar mensaje original si no es un evento estándar
+			select {
+			case broadcast <- Broadcast{Room: room, Data: msg}:
+			default:
+				log.Println("broadcast buffer lleno; descartando mensaje")
+			}
+			continue
+		}
+
+		// Emitir evento estandarizado
+		if eventType != "" {
 			notificacion := map[string]string{
-				"event":   "new_report",
-				"message": "Se ha creado un nuevo reporte",
+				"event":   eventType,
+				"message": eventMessage,
 			}
 			jsonData, _ := json.Marshal(notificacion)
 			select {
 			case broadcast <- Broadcast{Room: room, Data: jsonData}:
-				log.Printf("Notificación 'new_report' enviada a sala '%s'\n", room)
-			default:
-				log.Println("broadcast buffer lleno; descartando mensaje")
-			}
-		} else {
-			// Reenviar otros mensajes al canal actual
-			select {
-			case broadcast <- Broadcast{Room: room, Data: msg}:
+				log.Printf("Notificación '%s' enviada a sala '%s'\n", eventType, room)
 			default:
 				log.Println("broadcast buffer lleno; descartando mensaje")
 			}
@@ -268,7 +287,8 @@ func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
 
-	notificacion := map[string]string{
+	// Estructura base; permitimos adjuntar payload/data sin romper compatibilidad
+	notificacion := map[string]interface{}{
 		"event":   "new_report",
 		"message": "Se ha creado un nuevo reporte",
 	}
@@ -281,6 +301,12 @@ func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 			}
 			if ev, ok := payload["event"].(string); ok && strings.TrimSpace(ev) != "" {
 				notificacion["event"] = ev
+			}
+			// Permitir incluir datos adicionales bajo la clave "data" o "payload"
+			if data, ok := payload["data"]; ok {
+				notificacion["data"] = data
+			} else if pl, ok := payload["payload"]; ok {
+				notificacion["data"] = pl
 			}
 		}
 	}

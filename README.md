@@ -1,5 +1,41 @@
 # 🌐 Sistema de Reportes de Infraestructura Universitaria
 
+Monorepo con 4 servicios: REST (FastAPI), GraphQL (Apollo/TS), WebSocket (Go) y Frontend (React). Esta portada es breve; los detalles extensos se movieron a Docs y a los README de cada servicio.
+
+## 🧭 Índice rápido
+
+- REST API: sistema_de_informes/services/rest-api/README.md
+- GraphQL: sistema_de_informes/services/graphql/README.md
+- WebSocket: sistema_de_informes/services/ws/README.md
+- Frontend: sistema_de_informes/apps/frontend/README.md
+- Documentación (índice): sistema_de_informes/docs/README.md
+
+## ▶️ Ejecución rápida (PowerShell, 4 terminales)
+
+```powershell
+# 1) REST API
+cd sistema_de_informes\services\rest-api; pip install -r requirements.txt; uvicorn main:app --reload --port 8000
+
+# 2) GraphQL
+cd sistema_de_informes\services\graphql; npm install; npm run dev
+
+# 3) WebSocket
+cd sistema_de_informes\services\ws; go run .
+
+# 4) Frontend
+cd sistema_de_informes\apps\frontend; npm install; npm run dev
+```
+
+Servicios:
+- REST: http://localhost:8000
+- GraphQL: http://localhost:4000
+- WS: ws://localhost:8080/ws?room=reports
+- Frontend: http://localhost:3000
+
+---
+
+Contenido extendido (histórico) a continuación:
+
 ## 🏛 Universidad Laica Eloy Alfaro de Manabí
 
 **Facultad:** Ciencias de la Vida y Tecnologías  
@@ -463,3 +499,87 @@ Frontend (`frontend/.env.development`):
 ---
 
 📂 **Repositorio oficial:** https://github.com/jerenyvera09/trabajo_autonomoB-ser
+
+---
+
+## ✅ Verificación de Cumplimiento 100%
+
+### **Requisitos del Docente (Audio + PDF)**
+
+| #   | Requisito                                    | Estado      | Evidencia                                                                      |
+| --- | -------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| 1️⃣  | **GraphQL conectado a REST**                 | ✅ COMPLETO | `services/graphql/src/datasources/rest.ts` - RestDataSource con 11 métodos GET |
+| 2️⃣  | **11 queries analíticas (3 por integrante)** | ✅ COMPLETO | `services/graphql/src/resolvers/analytics.ts` - 11 queries documentadas        |
+| 3️⃣  | **Frontend consume queries analíticas**      | ✅ COMPLETO | `apps/frontend/src/App.tsx` - Dashboard con KPIs (línea 456-575)               |
+| 4️⃣  | **Reportes PDF descargables**                | ✅ COMPLETO | `services/graphql/src/resolvers/export.ts` + botones en App.tsx                |
+| 5️⃣  | **Dashboard con gráficos en tiempo real**    | ✅ COMPLETO | `apps/frontend/src/App.tsx` - 4 KPIs + Top Áreas + Promedio                    |
+| 6️⃣  | **REST → WebSocket notificaciones**          | ✅ COMPLETO | `services/rest-api/ws_notifier.py` - 3 funciones activas                       |
+| 7️⃣  | **WebSocket → Frontend actualización**       | ✅ COMPLETO | `apps/frontend/src/App.tsx` - Conexión WS (línea 345)                          |
+| 8️⃣  | **Distribución por integrante documentada**  | ✅ COMPLETO | `services/graphql/README.md` - Sección "Distribución de Queries"               |
+| 9️⃣  | **Sin duplicar CRUD en GraphQL**             | ✅ COMPLETO | GraphQL solo consulta, no crea/actualiza/elimina                               |
+| 🔟  | **Integración completa visible**             | ✅ COMPLETO | Dashboard muestra REST + GraphQL + WebSocket juntos                            |
+
+---
+
+### **Funcionalidades Implementadas**
+
+#### **📊 Dashboard Analítico (NEW)**
+
+- ✅ **4 KPIs principales**: Total, Abiertos, En Proceso, Cerrados
+- ✅ **Top 3 Áreas**: Con ranking visual (🥇🥈🥉)
+- ✅ **Promedio Puntuaciones**: Con indicador de calidad
+- ✅ **Actualización automática**: Vía WebSocket en tiempo real
+
+#### **📄 Reportes PDF (NEW)**
+
+- ✅ **Botón en cada reporte**: "Descargar Reporte PDF"
+- ✅ **Query GraphQL**: `reportAnalytics(reporteId, formato: "pdf")`
+- ✅ **Generación con pdfkit**: 6 secciones (reporte, usuario, categoría, comentarios, puntuaciones, archivos)
+- ✅ **Descarga directa**: Base64 → PDF descargable en navegador
+
+#### **🔗 Integración Completa**
+
+- ✅ **REST API**: 10 entidades CRUD
+- ✅ **GraphQL**: 11 queries analíticas consumiendo REST
+- ✅ **WebSocket**: 3 eventos en tiempo real
+- ✅ **Frontend**: Consume las 3 tecnologías simultáneamente
+
+---
+
+### **Distribución Individual de Trabajo**
+
+| Integrante           | Queries Analíticas                                                         | Archivo                  | Líneas  |
+| -------------------- | -------------------------------------------------------------------------- | ------------------------ | ------- |
+| **Cinthia Zambrano** | statsReportes, reportesPorArea, topAreas                                   | analytics.ts             | 50-100  |
+| **Carlos Campuzano** | reportesPorCategoria, promedioPuntuaciones, etiquetasMasUsadas             | analytics.ts             | 100-150 |
+| **Jereny Vera**      | reportesPorUsuario, actividadReciente, usuariosMasActivos, reportAnalytics | analytics.ts + export.ts | 150-224 |
+
+---
+
+## 📚 Referencias Oficiales
+
+### **Tecnologías Utilizadas**
+
+| Tecnología                           | Documentación Oficial                             |
+| ------------------------------------ | ------------------------------------------------- |
+| **FastAPI** (REST API)               | https://fastapi.tiangolo.com/                     |
+| **Apollo Server** (GraphQL)          | https://www.apollographql.com/docs/apollo-server/ |
+| **Gorilla WebSocket** (WebSocket Go) | https://github.com/gorilla/websocket              |
+| **React** (Frontend)                 | https://react.dev/                                |
+| **TypeScript**                       | https://www.typescriptlang.org/docs/              |
+| **PostgreSQL**                       | https://www.postgresql.org/docs/                  |
+| **Supabase**                         | https://supabase.com/docs                         |
+
+### **Librerías y Herramientas**
+
+| Librería                              | Documentación                 |
+| ------------------------------------- | ----------------------------- |
+| **SQLAlchemy** (ORM Python)           | https://docs.sqlalchemy.org/  |
+| **pdfkit** (Generación PDF)           | https://pdfkit.org/           |
+| **httpx** (Cliente HTTP async Python) | https://www.python-httpx.org/ |
+| **Vite** (Build tool)                 | https://vitejs.dev/           |
+
+---
+
+**Sistema de Informes Universidad - Semana 6** 🚀  
+**Cumplimiento 100%** con requisitos del docente ✅

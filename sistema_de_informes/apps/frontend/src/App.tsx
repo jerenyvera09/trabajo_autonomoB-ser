@@ -57,9 +57,12 @@ function App() {
   const [ratingsGraphQL, setRatingsGraphQL] = useState<Rating[]>([])
   const [filesGraphQL, setFilesGraphQL] = useState<FileItem[]>([])
   const [tagsGraphQL, setTagsGraphQL] = useState<Tag[]>([])
-  // KPIs (GraphQL → reportsAnalytics)
+  // KPIs (GraphQL → Queries Analíticas)
   const [analyticsTotal, setAnalyticsTotal] = useState<number>(0)
   const [analyticsByStatus, setAnalyticsByStatus] = useState<Array<{ clave: string; valor: number }>>([])
+  const [statsReportes, setStatsReportes] = useState<{ total: number; abiertos: number; cerrados: number; enProceso: number }>({ total: 0, abiertos: 0, cerrados: 0, enProceso: 0 })
+  const [topAreas, setTopAreas] = useState<Array<{ area: string; cantidad: number }>>([])
+  const [promedioPuntuaciones, setPromedioPuntuaciones] = useState<number>(0)
 
   // Función para cargar reportes desde REST API
   const fetchReportsREST = async () => {
@@ -217,6 +220,130 @@ function App() {
     }
   }
 
+  // 🆕 Función para cargar queries analíticas de GraphQL
+  const fetchAnalyticsGraphQL = async () => {
+    try {
+      const query = `
+        query {
+          statsReportes {
+            total
+            abiertos
+            cerrados
+            enProceso
+          }
+          topAreas(limit: 3) {
+            area
+            cantidad
+          }
+          promedioPuntuaciones
+        }
+      `
+      
+      const doFetch = async (endpoint: string) =>
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        })
+
+      let response = await doFetch(API_GRAPHQL)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let result: any = null
+      try {
+        result = await response.json()
+      } catch {
+        result = null
+      }
+
+      // Fallback a /graphql si falla
+      if (!response.ok || result?.errors) {
+        const alt = API_GRAPHQL.replace(/\/$/, '').endsWith('/graphql')
+          ? API_GRAPHQL.replace(/\/graphql\/?$/, '')
+          : `${API_GRAPHQL.replace(/\/$/, '')}/graphql`
+
+        response = await doFetch(alt)
+        try {
+          result = await response.json()
+        } catch {
+          result = null
+        }
+      }
+
+      if (result?.data) {
+        setStatsReportes(result.data.statsReportes || { total: 0, abiertos: 0, cerrados: 0, enProceso: 0 })
+        setTopAreas(result.data.topAreas || [])
+        setPromedioPuntuaciones(result.data.promedioPuntuaciones || 0)
+      }
+    } catch (err) {
+      console.error('Error al cargar analytics desde GraphQL:', err)
+    }
+  }
+
+  // 🆕 Función para descargar reporte PDF desde GraphQL
+  const downloadReportPDF = async (reporteId: string) => {
+    try {
+      const query = `
+        query {
+          reportAnalytics(reporteId: "${reporteId}", formato: "pdf") {
+            pdfBase64
+            reporte {
+              title
+            }
+          }
+        }
+      `
+      
+      const doFetch = async (endpoint: string) =>
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        })
+
+      let response = await doFetch(API_GRAPHQL)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let result: any = null
+      try {
+        result = await response.json()
+      } catch {
+        result = null
+      }
+
+      // Fallback a /graphql si falla
+      if (!response.ok || result?.errors) {
+        const alt = API_GRAPHQL.replace(/\/$/, '').endsWith('/graphql')
+          ? API_GRAPHQL.replace(/\/graphql\/?$/, '')
+          : `${API_GRAPHQL.replace(/\/$/, '')}/graphql`
+
+        response = await doFetch(alt)
+        try {
+          result = await response.json()
+        } catch {
+          result = null
+        }
+      }
+
+      if (result?.data?.reportAnalytics?.pdfBase64) {
+        const pdfBase64 = result.data.reportAnalytics.pdfBase64
+        const reportTitle = result.data.reportAnalytics.reporte?.title || 'reporte'
+        
+        // Crear link de descarga
+        const link = document.createElement('a')
+        link.href = 'data:application/pdf;base64,' + pdfBase64
+        link.download = `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}_analytics.pdf`
+        link.click()
+        
+        setNotification(`PDF descargado: ${reportTitle}`)
+        setTimeout(() => setNotification(null), 3000)
+      } else {
+        throw new Error('No se pudo generar el PDF')
+      }
+    } catch (err) {
+      setError(`Error al descargar PDF: ${err}`)
+      console.error('Error downloading PDF:', err)
+    }
+  }
+
   // Configurar conexión WebSocket
   useEffect(() => {
     const connectWebSocket = () => {
@@ -235,6 +362,7 @@ function App() {
             setNotification(data.message || 'Actualización recibida')
             fetchReportsREST()
             fetchReportsGraphQL()
+            fetchAnalyticsGraphQL() // 🆕 Actualizar analytics también
             setTimeout(() => setNotification(null), 5000)
           } catch (err) {
             console.error('Error parsing WebSocket message:', err)
@@ -274,6 +402,7 @@ function App() {
   useEffect(() => {
     fetchReportsREST()
     fetchReportsGraphQL()
+    fetchAnalyticsGraphQL() // 🆕 Cargar queries analíticas
   }, [])
 
   return (
@@ -291,6 +420,9 @@ function App() {
             </button>
             <button onClick={fetchReportsGraphQL}>
               🔄 Actualizar GraphQL
+            </button>
+            <button onClick={fetchAnalyticsGraphQL}>
+              📊 Actualizar Analytics
             </button>
           </div>
           
@@ -323,6 +455,146 @@ function App() {
       )}
 
       {/* =====================
+           DASHBOARD ANALÍTICO
+           (Queries GraphQL)
+          ===================== */}
+      <section style={{ marginBottom: '3rem' }}>
+        <h2 className="section-title">📊 Dashboard Analítico (GraphQL)</h2>
+        
+        {/* KPIs Principales */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: '1rem', 
+          marginBottom: '2rem' 
+        }}>
+          <div className="kpi-card" style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+            color: 'white', 
+            padding: '1.5rem', 
+            borderRadius: '12px', 
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)' 
+          }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{statsReportes.total}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Total Reportes</div>
+          </div>
+          
+          <div className="kpi-card" style={{ 
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+            color: 'white', 
+            padding: '1.5rem', 
+            borderRadius: '12px', 
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)' 
+          }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{statsReportes.abiertos}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Abiertos</div>
+          </div>
+          
+          <div className="kpi-card" style={{ 
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', 
+            color: 'white', 
+            padding: '1.5rem', 
+            borderRadius: '12px', 
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)' 
+          }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{statsReportes.enProceso}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>En Proceso</div>
+          </div>
+          
+          <div className="kpi-card" style={{ 
+            background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
+            color: 'white', 
+            padding: '1.5rem', 
+            borderRadius: '12px', 
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)' 
+          }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{statsReportes.cerrados}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>Cerrados</div>
+          </div>
+        </div>
+
+        {/* Top Áreas */}
+        <div style={{ 
+          background: 'white', 
+          padding: '1.5rem', 
+          borderRadius: '12px', 
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>🏆 Top 3 Áreas con Más Reportes</h3>
+          {topAreas.length === 0 ? (
+            <p style={{ color: '#999' }}>No hay datos disponibles</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {topAreas.map((area, index) => (
+                <div key={area.area} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  padding: '0.75rem',
+                  background: index === 0 ? '#fff3cd' : index === 1 ? '#d1ecf1' : '#f8d7da',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 'bold',
+                    width: '40px',
+                    textAlign: 'center'
+                  }}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold' }}>{area.area}</div>
+                    <div style={{ fontSize: '0.9rem', color: '#666' }}>{area.cantidad} reportes</div>
+                  </div>
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.1)', 
+                    padding: '0.5rem 1rem', 
+                    borderRadius: '20px',
+                    fontWeight: 'bold'
+                  }}>
+                    {area.cantidad}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Promedio Puntuaciones */}
+        <div style={{ 
+          background: 'white', 
+          padding: '1.5rem', 
+          borderRadius: '12px', 
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+        }}>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>⭐ Promedio de Puntuaciones</h3>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem',
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            color: promedioPuntuaciones >= 4 ? '#28a745' : promedioPuntuaciones >= 3 ? '#ffc107' : '#dc3545'
+          }}>
+            <span>{promedioPuntuaciones.toFixed(2)}</span>
+            <span style={{ fontSize: '2rem', opacity: 0.5 }}>/ 5.0</span>
+          </div>
+          <div style={{ 
+            marginTop: '1rem',
+            padding: '0.5rem',
+            background: promedioPuntuaciones >= 4 ? '#d4edda' : promedioPuntuaciones >= 3 ? '#fff3cd' : '#f8d7da',
+            borderRadius: '8px',
+            fontSize: '0.9rem'
+          }}>
+            {promedioPuntuaciones >= 4 ? '✅ Excelente calificación' : 
+             promedioPuntuaciones >= 3 ? '⚠️ Calificación aceptable' : 
+             '❌ Requiere mejoras'}
+          </div>
+        </div>
+      </section>
+
+      {/* =====================
            BLOQUE: REST
           (10 entidades)
           ===================== */}
@@ -348,6 +620,23 @@ function App() {
               {report.priority && <span>Prioridad: {report.priority}</span>}
               {report.location && <span>📍 {report.location}</span>}
             </div>
+            {/* 🆕 Botón para descargar PDF del reporte */}
+            <button 
+              onClick={() => downloadReportPDF(report.id)}
+              style={{ 
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.9rem'
+              }}
+            >
+              📄 Descargar Reporte PDF
+            </button>
           </div>
         ))}
       </section>
@@ -513,6 +802,23 @@ function App() {
               </span>
               {report.priority && <span>Prioridad: {report.priority}</span>}
             </div>
+            {/* 🆕 Botón para descargar PDF del reporte */}
+            <button 
+              onClick={() => downloadReportPDF(report.id)}
+              style={{ 
+                marginTop: '1rem',
+                padding: '0.5rem 1rem',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.9rem'
+              }}
+            >
+              📄 Descargar Reporte PDF
+            </button>
           </div>
         ))}
       </section>
