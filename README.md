@@ -1,42 +1,303 @@
 # 🌐 Sistema de Reportes de Infraestructura Universitaria
 
-Monorepo con 4 servicios: REST (FastAPI), GraphQL (Apollo/TS), WebSocket (Go) y Frontend (React). Esta portada es breve; los detalles extensos se movieron a Docs y a los README de cada servicio.
+**Proyecto Final - Semana 7**  
+Sistema distribuido con arquitectura de microservicios para gestión de reportes universitarios con notificaciones en tiempo real.
 
-## 🧭 Índice rápido
-
-- REST API: sistema_de_informes/services/rest-api/README.md
-- GraphQL: sistema_de_informes/services/graphql/README.md
-- WebSocket: sistema_de_informes/services/ws/README.md
-- Frontend: sistema_de_informes/apps/frontend/README.md
-- Documentación (índice): sistema_de_informes/docs/README.md
-
-## ▶️ Ejecución rápida (PowerShell, 4 terminales)
-
-```powershell
-# 1) REST API
-cd sistema_de_informes\services\rest-api; pip install -r requirements.txt; uvicorn main:app --reload --port 8000
-
-# 2) GraphQL
-cd sistema_de_informes\services\graphql; npm install; npm run dev
-
-# 3) WebSocket
-cd sistema_de_informes\services\ws; go run .
-
-# 4) Frontend
-cd sistema_de_informes\apps\frontend; npm install; npm run dev
-```
-
-Servicios:
-- REST: http://localhost:8000
-- GraphQL: http://localhost:4000
-- WS: ws://localhost:8080/ws?room=reports
-- Frontend: http://localhost:3000
+[![Estado](https://img.shields.io/badge/Estado-Completado-success)](https://github.com/jerenyvera09/trabajo_autonomoB-ser)
+[![Semana](https://img.shields.io/badge/Semana-7-blue)](https://github.com/jerenyvera09/trabajo_autonomoB-ser)
+[![Fecha](https://img.shields.io/badge/Fecha-29%2F10%2F2025-orange)](https://github.com/jerenyvera09/trabajo_autonomoB-ser)
 
 ---
 
-Contenido extendido (histórico) a continuación:
+## 📋 Tabla de Contenidos
 
-## 🏛 Universidad Laica Eloy Alfaro de Manabí
+- [🏛️ Información Académica](#️-información-académica)
+- [👥 Equipo de Desarrollo](#-equipo-de-desarrollo)
+- [🎯 Descripción del Proyecto](#-descripción-del-proyecto)
+- [🏗️ Arquitectura](#️-arquitectura)
+- [🚀 Inicio Rápido](#-inicio-rápido)
+- [📚 Documentación Semanal](#-documentación-semanal)
+- [🔗 Enlaces Importantes](#-enlaces-importantes)
+- [📊 Evidencias](#-evidencias)
+- [📝 Changelog](#-changelog)
+
+---
+
+## 🏛️ Información Académica
+
+**Universidad:** Laica Eloy Alfaro de Manabí (ULEAM)  
+**Facultad:** Ciencias de la Vida y Tecnologías  
+**Carrera:** Ingeniería de Software  
+**Asignatura:** Aplicación para el Servidor Web  
+**Docente:** Ing. John Cevallos  
+**Semestre:** 2024-2025 - 5to Semestre "B"  
+**Fecha de entrega:** 29 de octubre de 2025
+
+---
+
+## 👥 Equipo de Desarrollo
+
+| Integrante                             | Responsabilidad                     | Stack Tecnológico                       | Documentación                                            |
+| -------------------------------------- | ----------------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| **Cinthia Dayanna Zambrano Gavilanes** | REST API + Base de Datos            | Python, FastAPI, SQLAlchemy, PostgreSQL | [📄 Ver READMEs](sistema_de_informes/services/rest-api/) |
+| **Carlos Alberto Delgado Campuzano**   | GraphQL Server + Queries Analíticas | TypeScript, Apollo Server, GraphQL      | [📄 Ver READMEs](sistema_de_informes/services/graphql/)  |
+| **Jereny Jhonnayker Vera Mero**        | WebSocket Server + Notificaciones   | Go, Gorilla WebSocket, JSON             | [📄 Ver READMEs](sistema_de_informes/services/ws/)       |
+| **Equipo Completo**                    | Frontend + Integración              | React, TypeScript, Vite, Apollo Client  | [📄 Ver READMEs](sistema_de_informes/apps/frontend/)     |
+
+---
+
+## 🎯 Descripción del Proyecto
+
+El **Sistema de Reportes de Infraestructura Universitaria** es una aplicación web completa diseñada para gestionar reportes de incidentes en la comunidad universitaria (daños en infraestructura, problemas de seguridad, necesidades de mantenimiento, etc.).
+
+### ✨ Características Principales
+
+- ✅ **CRUD Completo** - Crear, leer, actualizar y eliminar reportes
+- ✅ **Autenticación JWT** - Login seguro con tokens
+- ✅ **Queries Avanzadas** - 11 queries analíticas con GraphQL
+- ✅ **Notificaciones en Tiempo Real** - WebSocket con sistema de rooms
+- ✅ **Exportación a PDF** - Generación de reportes en PDF
+- ✅ **Interfaz Moderna** - React + TypeScript con diseño responsivo
+- ✅ **Integración Completa** - 3 servicios backend + frontend trabajando juntos
+
+---
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────────────────────────────────────────────┐
+│          FRONTEND (React + TypeScript)              │
+│             http://localhost:3000                   │
+│  - UI Responsiva con notificaciones en tiempo real │
+│  - Apollo Client para GraphQL                      │
+│  - WebSocket para actualizaciones live             │
+└──────────┬──────────────┬──────────────┬───────────┘
+           │              │              │
+           ▼              ▼              ▼
+   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+   │  REST API    │ │   GraphQL    │ │  WebSocket   │
+   │  FastAPI     │◄┤   Apollo     │ │   Gorilla    │
+   │  Port: 8000  │ │   Port: 4000 │ │   Port: 8080 │
+   │              │ │              │ │              │
+   │ - CRUD       │ │ - Queries    │ │ - Rooms      │
+   │ - Auth JWT   │ │ - Analytics  │ │ - Ping/Pong  │
+   │ - Validación │ │ - PDF Export │ │ - Auth Token │
+   └──────┬───────┘ └──────────────┘ └──────────────┘
+          │
+          ▼
+   ┌──────────────┐
+   │  PostgreSQL  │
+   │  (Supabase)  │
+   │  10 Tablas   │
+   └──────────────┘
+```
+
+**Stack Tecnológico:**
+
+- **Backend:** Python (FastAPI), TypeScript (Apollo Server), Go (Gorilla)
+- **Frontend:** React 18, TypeScript, Vite, Apollo Client
+- **Base de Datos:** PostgreSQL (Supabase)
+- **Autenticación:** JWT (JSON Web Tokens)
+- **Notificaciones:** WebSocket (Gorilla)
+
+---
+
+## 🚀 Inicio Rápido
+
+### Prerequisitos
+
+- Python 3.11+
+- Node.js 18+
+- Go 1.21+
+- PostgreSQL (o cuenta en Supabase)
+
+### Instalación y Ejecución
+
+**Opción 1 - Ejecución manual (4 terminales):**
+
+```bash
+# Terminal 1 - REST API
+cd sistema_de_informes/services/rest-api
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Terminal 2 - GraphQL
+cd sistema_de_informes/services/graphql
+npm install
+npm run dev
+
+# Terminal 3 - WebSocket
+cd sistema_de_informes/services/ws
+go run main.go
+
+# Terminal 4 - Frontend
+cd sistema_de_informes/apps/frontend
+npm install
+npm run dev
+```
+
+**Servicios disponibles:**
+
+- 🌐 Frontend: http://localhost:3000
+- 🔌 REST API: http://localhost:8000 ([Docs](http://localhost:8000/docs))
+- 📊 GraphQL: http://localhost:4000/graphql
+- 🔔 WebSocket: ws://localhost:8080/ws?room=reports
+
+---
+
+## 📚 Documentación Semanal
+
+Cada servicio tiene documentación detallada por semana mostrando el progreso incremental:
+
+### 🐍 REST API (Python/FastAPI)
+
+- [📄 Semana 3](sistema_de_informes/services/rest-api/README.md) - Setup y arquitectura
+- [📄 Semana 4](sistema_de_informes/services/rest-api/README_SEMANA4.md) - CRUD básico y autenticación
+- [📄 Semana 5](sistema_de_informes/services/rest-api/README_SEMANA5.md) - Integración con WebSocket
+- [📄 Semana 6](sistema_de_informes/services/rest-api/README_SEMANA6.md) - Validaciones y tests E2E
+- [📄 Semana 7](sistema_de_informes/services/rest-api/README_SEMANA7.md) - Documentación final y demo
+
+### 📊 GraphQL (TypeScript/Apollo)
+
+- [📄 Semana 3](sistema_de_informes/services/graphql/README.md) - Setup y arquitectura
+- [📄 Semana 4](sistema_de_informes/services/graphql/README_SEMANA4.md) - Resolvers básicos
+- [📄 Semana 5](sistema_de_informes/services/graphql/README_SEMANA5.md) - Queries de interacción
+- [📄 Semana 6](sistema_de_informes/services/graphql/README_SEMANA6.md) - 11 queries analíticas + PDF
+- [📄 Semana 7](sistema_de_informes/services/graphql/README_SEMANA7.md) - Tests y documentación
+
+### 🔔 WebSocket (Go/Gorilla)
+
+- [📄 Semana 3](sistema_de_informes/services/ws/README.md) - Setup y arquitectura
+- [📄 Semana 4](sistema_de_informes/services/ws/README_SEMANA4.md) - Sistema de rooms
+- [📄 Semana 5](sistema_de_informes/services/ws/README_SEMANA5.md) - Ping/Pong y autenticación
+- [📄 Semana 6](sistema_de_informes/services/ws/README_SEMANA6.md) - Tests de integración
+- [📄 Semana 7](sistema_de_informes/services/ws/README_SEMANA7.md) - Dashboard y documentación
+
+### 🖥️ Frontend (React/TypeScript)
+
+- [📄 Semana 5](sistema_de_informes/apps/frontend/README.md) - Setup e integración triple
+- [📄 Semana 6](sistema_de_informes/apps/frontend/README_SEMANA6.md) - CRUD completo y autenticación
+- [📄 Semana 7](sistema_de_informes/apps/frontend/README_SEMANA7.md) - Tests E2E y optimización
+
+### 📖 Documentación Adicional
+
+- [📚 Índice de Docs](sistema_de_informes/docs/README.md) - Arquitectura, diagramas, contratos
+- [🔧 Scripts](sistema_de_informes/scripts/README.md) - Automatización y testing
+
+---
+
+## 🔗 Enlaces Importantes
+
+- **Documentación Interactiva:**
+  - REST API Swagger: http://localhost:8000/docs
+  - GraphQL Playground: http://localhost:4000/graphql
+- **Repositorio GitHub:**
+  - Código fuente: https://github.com/jerenyvera09/trabajo_autonomoB-ser
+- **Diagramas:**
+  - [Arquitectura del Sistema](sistema_de_informes/docs/arquitectura.png)
+  - [Diagrama UML](sistema_de_informes/docs/uml.png)
+
+---
+
+## 📊 Evidencias
+
+### Distribución de Commits por Integrante
+
+```bash
+# Ver commits por autor
+git shortlog -sn --all
+
+# Resultado:
+# 14  Jereny Vera       (WebSocket + Coordinación)
+#  7  Carlos Campuzano  (GraphQL)
+#  2  Cinthia Zambrano  (REST API)
+```
+
+### Commits por Semana
+
+- **Semana 3:** Setup inicial y arquitectura
+- **Semana 4:** Implementación de servicios básicos
+- **Semana 5:** Integración entre servicios
+- **Semana 6:** Queries analíticas y funcionalidades avanzadas
+- **Semana 7:** Tests, optimización y documentación completa
+
+---
+
+## 📝 Changelog
+
+Ver [CHANGELOG.md](CHANGELOG.md) para historial completo de cambios por semana.
+
+---
+
+## 🎓 Objetivos de Aprendizaje Alcanzados
+
+### ✅ Competencias Técnicas
+
+1. **Desarrollo Backend Polyglot:**
+   - Python (FastAPI) para REST API con validaciones Pydantic
+   - TypeScript (Apollo Server) para GraphQL con resolvers modulares
+   - Go (Gorilla) para WebSocket con concurrencia eficiente
+
+2. **Integración de Servicios:**
+   - Comunicación REST → GraphQL (DataSources)
+   - Notificaciones REST → WebSocket
+   - Frontend → 3 backends simultáneos
+
+3. **Autenticación y Seguridad:**
+   - JWT para autenticación
+   - Validación de tokens en WebSocket
+   - CORS configurado correctamente
+
+4. **Testing y Calidad:**
+   - Tests E2E con pytest
+   - Tests de integración entre servicios
+   - Validación de comportamiento
+
+### ✅ Buenas Prácticas Aplicadas
+
+- ✅ Código modular y reutilizable
+- ✅ Documentación completa por semanas
+- ✅ Variables de entorno para configuración
+- ✅ Manejo estructurado de errores
+- ✅ Commits descriptivos y frecuentes
+- ✅ READMEs profesionales con ejemplos
+
+---
+
+## 📸 Screenshots (Opcional)
+
+> Agregar en `docs/evidencias/` capturas de pantalla del sistema funcionando
+
+---
+
+## 🤝 Contribuciones
+
+Este proyecto fue desarrollado como parte de la asignatura **Aplicación para el Servidor Web**.
+
+**Metodología de trabajo:**
+
+- Reuniones semanales de coordinación
+- Commits individuales por responsabilidad
+- Revisiones de código entre pares
+- Documentación incremental por semana
+
+---
+
+## 📄 Licencia
+
+Este proyecto es académico y fue desarrollado para fines educativos en la ULEAM.
+
+---
+
+## 🙏 Agradecimientos
+
+- **Docente:** Ing. John Cevallos - Por la guía y enseñanzas durante el semestre
+- **Universidad ULEAM** - Por la formación académica
+- **Equipo de desarrollo** - Por el trabajo colaborativo
+
+---
+
+**✨ Proyecto completado exitosamente - Semana 7 - 29/10/2025 ✨**
 
 **Facultad:** Ciencias de la Vida y Tecnologías  
 **Carrera:** Ingeniería de Software  
