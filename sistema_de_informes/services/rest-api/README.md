@@ -33,6 +33,7 @@ Ajusta las variables según sea necesario:
 
 - JWT_SECRET: clave para firmar tokens
 - DATABASE_URL: URL de la base de datos (por defecto sqlite:///./app.db)
+ - DATABASE_URL: URL de la base de datos (por defecto apunta a `sistema_de_informes/db/app.db`)
 
 *Ejecutar el servidor:*
 

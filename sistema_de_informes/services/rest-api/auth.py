@@ -9,7 +9,8 @@ from schemas.schemas import UsuarioCreate, LoginIn, TokenOut
 import os
 from entities.rol import Rol
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Usamos pbkdf2_sha256 para evitar dependencias nativas de bcrypt y el límite de 72 bytes
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-change-this")
 ALGORITHM = os.getenv("JWT_ALG", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8

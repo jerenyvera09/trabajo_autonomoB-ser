@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from db import get_db
@@ -8,7 +8,7 @@ import os
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-change-this")
 ALGORITHM = os.getenv("JWT_ALG", "HS256")
 
-def Auth(dep_db: Session = Depends(get_db), authorization: str | None = None) -> Usuario:
+def Auth(authorization: str | None = Header(None), dep_db: Session = Depends(get_db)) -> Usuario:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Falta token Bearer")
     token = authorization.split(" ", 1)[1]
