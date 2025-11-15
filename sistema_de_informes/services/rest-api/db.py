@@ -1,21 +1,36 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+from dotenv import load_dotenv
 
-# Construir una URL SQLite por defecto que apunte al directorio compartido `db/`
-# a nivel de `sistema_de_informes`. Esto evita que se recree `app.db` en el
-# directorio actual si no se define DATABASE_URL explícitamente.
-_here = os.path.dirname(os.path.abspath(__file__))
-_default_db_path = os.path.normpath(os.path.join(_here, "..", "..", "db", "app.db"))
-# Normalizar a formato compatible con SQLAlchemy en Windows (slashes hacia adelante)
-_default_db_url = f"sqlite:///{_default_db_path.replace('\\', '/')}"
+# Cargar variables de entorno desde .env
+load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", _default_db_url)
+# Configuración para Supabase (PostgreSQL)
+# La variable DATABASE_URL debe estar configurada en el archivo .env
+# Formato: postgresql://usuario:password@host.supabase.co:5432/postgres
+DATABASE_URL = os.getenv("DATABASE_URL")
 
+if not DATABASE_URL:
+    raise ValueError(
+        "❌ DATABASE_URL no está configurada. "
+        "Por favor, configura tu conexión a Supabase en el archivo .env"
+    )
+
+# Esquema de base de datos (por defecto: public)
+DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
+
+# Configuración del engine para PostgreSQL/Supabase
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    connect_args={
+        "options": f"-csearch_path={DB_SCHEMA}"
+    }
 )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
