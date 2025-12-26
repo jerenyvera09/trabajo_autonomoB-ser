@@ -3,33 +3,41 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env
+# Cargar variables de entorno desde .env (si existe)
 load_dotenv()
 
-# Configuración para Supabase (PostgreSQL)
-# La variable DATABASE_URL debe estar configurada en el archivo .env
-# Formato: postgresql://usuario:password@host.supabase.co:5432/postgres
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Modo híbrido: por defecto SQLite local en sistema_de_informes/db/app.db.
+# Si se define DATABASE_URL (PostgreSQL/Supabase), se usa esa conexión.
 
-if not DATABASE_URL:
-    raise ValueError(
-        "❌ DATABASE_URL no está configurada. "
-        "Por favor, configura tu conexión a Supabase en el archivo .env"
-    )
+_here = os.path.dirname(os.path.abspath(__file__))
+_default_sqlite_path = os.path.normpath(os.path.join(_here, "..", "..", "db", "app.db"))
+_default_sqlite_url = f"sqlite:///{_default_sqlite_path.replace('\\', '/')}"
 
-# Esquema de base de datos (por defecto: public)
+DATABASE_URL = os.getenv("DATABASE_URL", _default_sqlite_url)
+
+# Esquema de base de datos (por defecto: public) — sólo aplica para Postgres
 DB_SCHEMA = os.getenv("DB_SCHEMA", "public")
 
-# Configuración del engine para PostgreSQL/Supabase
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-    connect_args={
-        "options": f"-csearch_path={DB_SCHEMA}"
-    }
-)
+is_sqlite = DATABASE_URL.startswith("sqlite")
+
+if is_sqlite:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True,
+    )
+else:
+    # Configuración del engine para PostgreSQL/Supabase
+    # Formato esperado: postgresql://usuario:password@host:5432/base
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        connect_args={
+            "options": f"-csearch_path={DB_SCHEMA}"
+        },
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
