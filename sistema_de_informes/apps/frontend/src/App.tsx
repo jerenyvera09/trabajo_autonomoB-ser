@@ -1,4 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
+import PdfUploader from './components/PdfUploader'
+import ChatUI from './components/ChatUI'
+import Payments from './components/Payments'
 import './App.css'
 
 // Configuración de URLs desde variables de entorno
@@ -30,6 +33,29 @@ interface FileItem { id: string | number; report_id: number; name: string; type?
 interface Tag { id: string | number; name: string; color?: string }
 
 function App() {
+  // Estado para texto extraído del PDF
+  const [pdfText, setPdfText] = useState<string | null>(null)
+
+  const API_AI = import.meta.env.VITE_AI_ORCHESTRATOR || 'http://localhost:8003'
+
+  // Handler para enviar mensaje al AI Orchestrator
+  const handleChatSend = async (message: string) => {
+    // Si hay texto PDF, lo pasamos como argumento a una tool real que consume texto
+    const body: any = { message }
+    if (pdfText) {
+      body.toolName = 'pdf_inspect'
+      body.toolArgs = { text: pdfText }
+    }
+
+    const res = await fetch(`${API_AI}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) return 'Error en AI Orchestrator'
+    const data = await res.json()
+    return data.reply
+  }
   const [reportsREST, setReportsREST] = useState<Report[]>([])
   const [reportsGraphQL, setReportsGraphQL] = useState<Report[]>([])
   const [loading, setLoading] = useState(false)
@@ -407,6 +433,15 @@ function App() {
 
   return (
     <div className="container">
+      {/* =====================
+           SEMANA 4: PDF + CHAT + PAGOS
+         ===================== */}
+      <section>
+        <h2>Semana 4 - Integración Multimodal y Pagos</h2>
+        <PdfUploader onExtractedText={setPdfText} />
+        <ChatUI onSend={handleChatSend} pdfText={pdfText || undefined} />
+        <Payments />
+      </section>
       <header>
         <h1>🏛️ Sistema de Reportes - ULEAM</h1>
         <p style={{ color: '#999', marginBottom: '2rem' }}>

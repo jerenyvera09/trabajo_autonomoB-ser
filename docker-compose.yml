@@ -1,4 +1,16 @@
 services:
+  rest-api:
+    build:
+      context: ./sistema_de_informes/services/rest-api
+    container_name: rest-api
+    environment:
+      - ALLOW_ORIGINS=*
+      - DATABASE_URL=sqlite:////app/app.db
+    ports:
+      - "8000:8000"
+    networks:
+      - informes_net
+
   auth-db:
     image: postgres:15
     container_name: auth-db
@@ -78,7 +90,7 @@ services:
     container_name: partner-php
     environment:
       PARTNER_SHARED_SECRET: ${PARTNER_SHARED_SECRET:-dev-partner-secret-change-me}
-      PARTNER_ID: ${PARTNER_ID:-}
+      PARTNER_ID: ${PARTNER_ID:-partner_php_demo}
       TARGET_URL: ${TARGET_URL:-http://payment-service:8002/webhooks/partner}
     ports:
       - "8088:80"
