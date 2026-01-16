@@ -38,6 +38,11 @@ coverage/
 # TypeScript build info
 *.tsbuildinfo
 
+# --- Python (bytecode/cache) ---
+__pycache__/
+*.py[cod]
+*$py.class
+
 # --- Go (services/ws) ---
 # Binarios y artefactos de compilación
 *.exe

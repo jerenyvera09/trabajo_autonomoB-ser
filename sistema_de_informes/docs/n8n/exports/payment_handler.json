@@ -1,0 +1,90 @@
+{
+  "name": "Payment Handler (Semana 3)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "payment-handler",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "3f4a9e2d-7f1e-4d7b-8f2c-6d0a2b9b5b01",
+      "name": "Webhook Entrada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza payload entrante.\n// Espera algo como { amount: 10, currency: 'USD' }\n\nconst body = items?.[0]?.json ?? {};\nconst amount = Number(body.amount ?? body.monto ?? 10);\nconst currency = String(body.currency ?? body.moneda ?? 'USD');\n\nreturn [{ json: { amount, currency } }];"
+      },
+      "id": "c843c4b0-59f0-4c33-9e8c-6d2cfbd5147a",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://payment-service:8002/payments/checkout",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParametersJson": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "4f4d5d8b-3816-4b55-a6c9-5ea43d2d6dfb",
+      "name": "Crear Pago (payment-service)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Entrada": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "Crear Pago (payment-service)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

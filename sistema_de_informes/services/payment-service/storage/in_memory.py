@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 from threading import RLock
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from domain.models import Partner, PaymentRecord
 
@@ -30,6 +30,10 @@ class InMemoryPaymentStore:
             updated = replace(existing, status=status, updated_at=datetime.now(timezone.utc))
             self._payments[payment_id] = updated
             return updated
+
+    def list_all(self) -> List[PaymentRecord]:
+        with self._lock:
+            return list(self._payments.values())
 
 
 class InMemoryPartnerStore:

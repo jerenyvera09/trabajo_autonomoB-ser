@@ -1,0 +1,36 @@
+{
+  "name": "Scheduled Task - Reporte Diario (Mock)",
+  "nodes": [
+    {
+      "id": "1",
+      "type": "cron",
+      "name": "Cron Diario",
+      "parameters": {
+        "cronExpression": "0 8 * * *"
+      }
+    },
+    {
+      "id": "2",
+      "type": "function",
+      "name": "Generar Reporte (Mock)",
+      "parameters": {
+        "functionCode": "// Simula generación de reporte diario.\nreturn { reporte: 'Reporte diario mock generado', fecha: new Date().toISOString() };"
+      }
+    },
+    {
+      "id": "3",
+      "type": "emailSend",
+      "name": "Enviar Reporte",
+      "parameters": {
+        "to": "admin@example.com",
+        "subject": "Reporte Diario (mock)",
+        "body": "Adjunto reporte diario mock."
+      }
+    }
+  ],
+  "connections": [
+    { "from": "1", "to": "2" },
+    { "from": "2", "to": "3" }
+  ],
+  "description": "Borrador/plantilla (no export real de n8n)."
+}

@@ -1,0 +1,56 @@
+{
+  "name": "Payment Handler (MockAdapter)",
+  "nodes": [
+    {
+      "id": "1",
+      "type": "webhook",
+      "name": "Webhook Entrada",
+      "parameters": {
+        "path": "payment-handler-mock",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "type": "function",
+      "name": "Validar Payload",
+      "parameters": {
+        "functionCode": "// Validación mock. Aquí se validaría el payload real.\nreturn { valid: true, payload: items };"
+      }
+    },
+    {
+      "id": "3",
+      "type": "function",
+      "name": "Activar Servicio/Reserva",
+      "parameters": {
+        "functionCode": "// Simula activación de servicio/reserva.\nreturn { status: 'activated', ...items };"
+      }
+    },
+    {
+      "id": "4",
+      "type": "websocket",
+      "name": "Notificar WebSocket",
+      "parameters": {
+        "url": "ws://localhost:8004/notify",
+        "message": "Pago procesado y servicio activado (mock)"
+      }
+    },
+    {
+      "id": "5",
+      "type": "emailSend",
+      "name": "Enviar Email Confirmación",
+      "parameters": {
+        "to": "demo@example.com",
+        "subject": "Confirmación de pago (mock)",
+        "body": "Su pago ha sido procesado y el servicio activado. (mock)"
+      }
+    }
+  ],
+  "connections": [
+    { "from": "1", "to": "2" },
+    { "from": "2", "to": "3" },
+    { "from": "3", "to": "4" },
+    { "from": "3", "to": "5" }
+  ],
+  "description": "Borrador/plantilla (no export real de n8n)."
+}

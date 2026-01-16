@@ -1,0 +1,95 @@
+services:
+  auth-db:
+    image: postgres:15
+    container_name: auth-db
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - informes_net
+
+  auth-service:
+    build:
+      context: ./sistema_de_informes/services/auth-service
+    container_name: auth-service
+    environment:
+      AUTH_DATABASE_URL: postgresql://auth_user:auth_pass@auth-db:5432/auth_db
+      JWT_SECRET: please-change-this-secret
+      JWT_ALG: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_MINUTES: 10080
+      RATE_LIMIT_LOGIN_ATTEMPTS: 5
+      RATE_LIMIT_WINDOW_SECONDS: 60
+    depends_on:
+      - auth-db
+    ports:
+      - "8001:8001"
+    networks:
+      - informes_net
+
+  n8n:
+    image: n8nio/n8n:1.70.0
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - informes_net
+
+  payment-service:
+    build:
+      context: ./sistema_de_informes/services/payment-service
+    container_name: payment-service
+    environment:
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      PAYMENT_SERVICE_SECRET_FALLBACK: ${PAYMENT_SERVICE_SECRET_FALLBACK:-dev-secret-change-me}
+      HMAC_HEADER_SIGNATURE: ${HMAC_HEADER_SIGNATURE:-X-Signature}
+      HMAC_HEADER_PARTNER_ID: ${HMAC_HEADER_PARTNER_ID:-X-Partner-Id}
+    ports:
+      - "8002:8002"
+    networks:
+      - informes_net
+
+  ai-orchestrator:
+    build:
+      context: ./sistema_de_informes/services/ai-orchestrator
+    container_name: ai-orchestrator
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      ALLOW_ORIGINS: ${AI_ALLOW_ORIGINS:-*}
+    ports:
+      - "8003:8003"
+    networks:
+      - informes_net
+
+  partner-php:
+    build:
+      context: ./backend_php
+    container_name: partner-php
+    environment:
+      PARTNER_SHARED_SECRET: ${PARTNER_SHARED_SECRET:-dev-partner-secret-change-me}
+      PARTNER_ID: ${PARTNER_ID:-}
+      TARGET_URL: ${TARGET_URL:-http://payment-service:8002/webhooks/partner}
+    ports:
+      - "8088:80"
+    networks:
+      - informes_net
+
+volumes:
+  auth_db_data:
+  n8n_data:
+
+
+networks:
+  informes_net:
+    driver: bridge
