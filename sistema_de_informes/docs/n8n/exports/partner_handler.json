@@ -1,0 +1,56 @@
+{
+  "name": "Partner Handler (Semana 3 - HMAC)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "partner-handler",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "d64c56c7-2b07-4fa9-9b53-f5bd7c089ea4",
+      "name": "Webhook Partner",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida HMAC-SHA256 (hex) en header X-Signature.\n// Nota: en un caso real, idealmente firmas el raw body. Aquí usamos JSON.stringify del objeto parseado.\n\nconst crypto = require('crypto');\n\nconst secret = $env.PARTNER_SHARED_SECRET || 'dev-partner-secret-change-me';\nconst headers = $headers || {};\nconst provided = String(headers['x-signature'] || headers['X-Signature'] || '').trim().toLowerCase();\n\nconst raw = JSON.stringify(items?.[0]?.json ?? {});\nconst expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\n\nif (!provided || expected !== provided) {\n  throw new Error('HMAC inválido');\n}\n\nreturn [{ json: { ok: true, expected, provided, payload: items?.[0]?.json ?? {} } }];"
+      },
+      "id": "4b6ac6c2-4a55-4ccf-b65f-9f03765b1bd9",
+      "name": "Validar HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Partner": {
+      "main": [
+        [
+          {
+            "node": "Validar HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

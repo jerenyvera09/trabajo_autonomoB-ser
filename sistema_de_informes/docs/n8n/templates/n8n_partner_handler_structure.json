@@ -1,0 +1,35 @@
+{
+  "name": "Partner Handler (Semana 3 - Estructura)",
+  "nodes": [
+    {
+      "id": "1",
+      "type": "webhook",
+      "name": "Webhook Partner",
+      "parameters": {
+        "path": "partner-handler",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "2",
+      "type": "function",
+      "name": "Validar HMAC (Guía)",
+      "parameters": {
+        "functionCode": "// Semana 3: guía para validar HMAC-SHA256 (X-Signature) en n8n.\n// NOTA: Este JSON es plantilla de estructura (no export oficial de n8n).\n//\n// Para validación real en n8n, usa un nodo 'Code' y el módulo crypto:\n// const crypto = require('crypto');\n// const secret = $env.PARTNER_SHARED_SECRET;\n// const raw = JSON.stringify($json);\n// const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\n// const provided = ($headers['x-signature'] || '').trim().toLowerCase();\n// if (expected !== provided) throw new Error('HMAC inválido');\nreturn { hmac_valid: true, ...items };"
+      }
+    },
+    {
+      "id": "3",
+      "type": "function",
+      "name": "Procesar Evento (Simulado)",
+      "parameters": {
+        "functionCode": "// Semana 3: procesar evento recibido (mock).\nreturn { processed: true, ...items };"
+      }
+    }
+  ],
+  "connections": [
+    { "from": "1", "to": "2" },
+    { "from": "2", "to": "3" }
+  ],
+  "description": "Borrador/plantilla (no export real de n8n)."
+}

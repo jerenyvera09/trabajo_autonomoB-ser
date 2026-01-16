@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Dict
 
 from dotenv import load_dotenv
@@ -12,6 +13,12 @@ from llm.provider import LLMProvider
 from schemas import ChatIn, ChatOut, ToolResult
 from tools.action_tool import ActionTool
 from tools.info_tool import InfoTool
+from tools.activate_service_tool import ActivateServiceTool
+from tools.create_payment_tool import CreatePaymentTool
+from tools.query_payment_tool import QueryPaymentTool
+from tools.query_user_tool import QueryUserTool
+from tools.report_tool import ReportTool
+from tools.pdf_tool import PdfInspectTool, PdfToPartnerPaymentTool
 
 load_dotenv()
 
@@ -44,6 +51,15 @@ def get_llm_provider() -> LLMProvider:
 TOOLS = {
     "info": InfoTool(),
     "action": ActionTool(),
+    # Semana 3 (tools reales)
+    "create_payment": CreatePaymentTool(),
+    "query_payment": QueryPaymentTool(),
+    "report": ReportTool(),
+    "activate_service": ActivateServiceTool(),
+    "query_user": QueryUserTool(),
+    # Semana 4 (multimodal PDF)
+    "pdf_inspect": PdfInspectTool(),
+    "pdf_to_partner_payment": PdfToPartnerPaymentTool(),
 }
 
 
@@ -62,18 +78,26 @@ def chat(payload: ChatIn):
     llm = get_llm_provider()
 
     tools_used = []
+
     if payload.toolName:
         tool_key = payload.toolName.strip().lower()
         tool = TOOLS.get(tool_key)
         if not tool:
-            raise HTTPException(status_code=400, detail=f"Tool no soportada en Semana 2: {payload.toolName}")
+            raise HTTPException(status_code=400, detail=f"Tool no soportada: {payload.toolName}")
+
         result = tool.run(payload.toolArgs)
+        if not isinstance(result, dict):
+            raise HTTPException(status_code=500, detail=f"Tool {tool_key} devolvió un tipo inválido (se esperaba dict)")
         tools_used.append(ToolResult(tool=tool.name, result=result))
 
     reply = llm.generate(payload.message)
 
     # Si se usó tool, devolvemos una nota mínima adicional (sin IA real)
     if tools_used:
-        reply = f"{reply}\n\n(mock) Tools usadas: {', '.join([t.tool for t in tools_used])}"
+        tools_list = ", ".join([t.tool for t in tools_used])
+        tools_details = "\n".join([
+            f"- {t.tool}: {json.dumps(t.result, ensure_ascii=False)}" for t in tools_used
+        ])
+        reply = f"{reply}\n\n(mock) Tools usadas: {tools_list}\n{tools_details}"
 
     return ChatOut(provider=(os.getenv("LLM_PROVIDER") or "mock"), reply=reply, toolsUsed=tools_used)
