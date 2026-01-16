@@ -1,0 +1,17 @@
+services:
+  partner-php:
+    container_name: partner-php
+    build:
+      context: ./backend_php
+    environment:
+      PARTNER_SHARED_SECRET: ${PARTNER_SHARED_SECRET:-dev-partner-secret-change-me}
+      # Para pruebas de Semana 3 (partner -> nuestro sistema): payment-service valida HMAC y requiere X-Partner-Id
+      TARGET_URL: ${TARGET_URL:-http://payment-service:8002/webhooks/partner}
+      PARTNER_ID: ${PARTNER_ID:-}
+    ports:
+      - "8088:80"
+    networks:
+      - informes_net
+
+# NOTE: This file is meant to be used together with the repo root docker-compose.yml,
+# which already defines the `informes_net` network.
