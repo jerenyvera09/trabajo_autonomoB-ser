@@ -14,6 +14,7 @@ from routers.estado_reporte import router as estados_router
 from routers.comentario import router as comentarios_router
 from routers.puntuacion import router as puntuaciones_router
 from routers.etiqueta import router as etiquetas_router
+from routers.pdf import router as pdf_router
 from entities.reporte import Reporte
 from entities.estado_reporte import EstadoReporte
 from entities.categoria import Categoria
@@ -248,3 +249,4 @@ app.include_router(estados_router)
 app.include_router(comentarios_router)
 app.include_router(puntuaciones_router)
 app.include_router(etiquetas_router)
+app.include_router(pdf_router)

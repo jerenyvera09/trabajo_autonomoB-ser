@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import secrets
+import urllib.error
+import urllib.request
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
@@ -19,6 +22,7 @@ from domain.schemas import (
     PaymentOut,
 )
 from security.hmac_utils import verify_hmac_sha256
+from security.hmac_utils import compute_hmac_sha256
 from storage.in_memory import InMemoryPartnerStore, InMemoryPaymentStore
 from webhooks.normalize import normalize_webhook
 
@@ -89,10 +93,33 @@ def get_payment(payment_id: str):
     )
 
 
+@app.get("/payments", response_model=list[PaymentOut])
+def list_payments():
+    provider = get_provider()
+    records = payment_store.list_all()
+    out: list[PaymentOut] = []
+    for r in records:
+        # resolver status desde provider (para mock es el mismo store)
+        status = provider.get_payment_status(r.id)
+        out.append(
+            PaymentOut(
+                id=r.id,
+                provider=r.provider,
+                status=status,
+                amount=r.amount,
+                currency=r.currency,
+            )
+        )
+    return out
+
+
 @app.post("/partners/register", response_model=PartnerRegisterOut, status_code=201)
 def register_partner(payload: PartnerRegisterIn):
-    partner_id = f"partner_{secrets.token_hex(8)}"
-    secret_value = secrets.token_hex(32)  # secret compartido para HMAC
+    partner_id = (payload.partnerId or "").strip() or f"partner_{secrets.token_hex(8)}"
+    if partner_store.get(partner_id):
+        raise HTTPException(status_code=409, detail="partnerId ya existe")
+
+    secret_value = (payload.secret or "").strip() or secrets.token_hex(32)  # secret compartido para HMAC
 
     partner = Partner(
         id=partner_id,
@@ -161,3 +188,67 @@ async def receive_webhook(
             adapter.apply_webhook_event(payment_id, event)
 
     return NormalizedWebhookEvent(**normalized)
+
+
+def _http_post_json(url: str, body: bytes, headers: Dict[str, str], timeout_seconds: int = 10) -> Dict[str, Any]:
+    req = urllib.request.Request(url=url, data=body, method="POST")
+    for k, v in headers.items():
+        req.add_header(k, v)
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            resp_body = resp.read().decode("utf-8", errors="replace")
+            return {"status_code": int(getattr(resp, "status", 0) or 0), "response_body": resp_body}
+    except urllib.error.HTTPError as e:
+        err_body = ""
+        try:
+            err_body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            err_body = ""
+        return {"status_code": int(getattr(e, "code", 0) or 0), "response_body": err_body}
+    except Exception as e:
+        return {"status_code": 0, "response_body": f"request_failed: {e}"}
+
+
+@app.post("/partners/{partner_id}/send-test")
+def send_test_webhook_to_partner(partner_id: str):
+    """
+    Semana 3: demostrar dirección "nuestro sistema -> partner".
+    Envía un webhook firmado (HMAC-SHA256) al webhook_url del partner registrado.
+
+    - Firma en header: X-Signature
+    - Identificación: X-Partner-Id
+    """
+
+    partner = partner_store.get(partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner no registrado")
+
+    payload = {
+        "event": "payment.success",
+        "data": {"payment_id": f"pay_{secrets.token_hex(6)}", "amount": 10.0, "currency": "USD"},
+        "timestamp": "2026-01-15T00:00:00Z",
+        "source": "payment-service",
+    }
+
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    signature = compute_hmac_sha256(partner.secret, body)
+
+    result = _http_post_json(
+        url=partner.webhook_url,
+        body=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+            "X-Partner-Id": partner.id,
+        },
+        timeout_seconds=10,
+    )
+
+    return {
+        "status": "sent",
+        "partnerId": partner.id,
+        "webhookUrl": partner.webhook_url,
+        "event": payload["event"],
+        "downstream": result,
+    }

@@ -36,6 +36,9 @@ class PartnerRegisterIn(BaseModel):
     name: str = Field(..., min_length=2)
     webhookUrl: str = Field(..., min_length=8)
     events: List[str] = Field(default_factory=list)
+    # Semana 4 (integración): permitir fijar partnerId/secret para coordinar HMAC bidireccional.
+    partnerId: Optional[str] = Field(default=None, description="Opcional: id estable del partner")
+    secret: Optional[str] = Field(default=None, description="Opcional: secret HMAC compartido")
 
 
 class PartnerRegisterOut(BaseModel):

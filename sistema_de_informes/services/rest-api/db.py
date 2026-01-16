@@ -11,7 +11,8 @@ load_dotenv()
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _default_sqlite_path = os.path.normpath(os.path.join(_here, "..", "..", "db", "app.db"))
-_default_sqlite_url = f"sqlite:///{_default_sqlite_path.replace('\\', '/')}"
+_default_sqlite_path_posix = _default_sqlite_path.replace("\\", "/")
+_default_sqlite_url = f"sqlite:///{_default_sqlite_path_posix}"
 
 DATABASE_URL = os.getenv("DATABASE_URL", _default_sqlite_url)
 
