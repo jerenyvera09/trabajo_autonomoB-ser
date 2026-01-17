@@ -1,16 +1,17 @@
 import { useEffect, useState, useRef } from 'react'
 import PdfUploader from './components/PdfUploader'
+import ImageUploader from './components/ImageUploader'
 import ChatUI from './components/ChatUI'
 import Payments from './components/Payments'
 import './App.css'
 
-// Configuración de URLs desde variables de entorno
-const API_REST = import.meta.env.VITE_API_REST || 'http://localhost:8000'
-// Por defecto apuntamos a la raíz. Si el servidor usa "/graphql",
-// más abajo hacemos un intento de respaldo (fallback) automático.
-const API_GRAPHQL = import.meta.env.VITE_API_GRAPHQL || 'http://localhost:4000'
-// Importante: por defecto nos suscribimos a la sala 'reports' para que coincida con WS_NOTIFY_URL=/notify/reports
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws?room=reports'
+// Configuración de URLs desde variables de entorno.
+// Segundo Parcial: por defecto todo pasa por el API Gateway (P1 integración).
+const API_REST = import.meta.env.VITE_API_REST || 'http://localhost:9000'
+// GraphQL recomendado vía gateway (proxy HTTP)
+const API_GRAPHQL = import.meta.env.VITE_API_GRAPHQL || 'http://localhost:9000/graphql'
+// WebSocket recomendado vía gateway (proxy WS)
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:9000/ws?room=reports'
 
 interface Report {
   id: string
@@ -35,14 +36,20 @@ interface Tag { id: string | number; name: string; color?: string }
 function App() {
   // Estado para texto extraído del PDF
   const [pdfText, setPdfText] = useState<string | null>(null)
+  // Estado para imagen en base64 (DataURL)
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
 
-  const API_AI = import.meta.env.VITE_AI_ORCHESTRATOR || 'http://localhost:8003'
+  // AI Orchestrator recomendado vía gateway (/ai -> proxy)
+  const API_AI = import.meta.env.VITE_AI_ORCHESTRATOR || 'http://localhost:9000/ai'
 
   // Handler para enviar mensaje al AI Orchestrator
   const handleChatSend = async (message: string) => {
     // Si hay texto PDF, lo pasamos como argumento a una tool real que consume texto
     const body: any = { message }
-    if (pdfText) {
+    if (imageBase64) {
+      body.toolName = 'image_inspect'
+      body.toolArgs = { image_base64: imageBase64 }
+    } else if (pdfText) {
       body.toolName = 'pdf_inspect'
       body.toolArgs = { text: pdfText }
     }
@@ -439,6 +446,7 @@ function App() {
       <section>
         <h2>Semana 4 - Integración Multimodal y Pagos</h2>
         <PdfUploader onExtractedText={setPdfText} />
+        <ImageUploader onImageBase64={setImageBase64} />
         <ChatUI onSend={handleChatSend} pdfText={pdfText || undefined} />
         <Payments />
       </section>

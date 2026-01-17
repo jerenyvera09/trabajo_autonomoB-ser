@@ -11,6 +11,10 @@ Microservicio FastAPI que abstrae pasarelas de pago mediante **Adapter Pattern**
 - `POST /payments/checkout` → crea un pago (mock)
 - `GET /payments/{payment_id}` → consulta estado
 
+### Pagos (StripeAdapter - demo local)
+- Activar con `PAYMENT_PROVIDER=stripe`.
+- `POST /payments/checkout` → crea un pago con `provider=stripe` (sin SDK externo).
+
 ### Partners (B2B)
 - `POST /partners/register` → registra partner y genera `partnerId` + `secret`
 - `POST /partners/{partner_id}/send-test` → (Semana 3) envía un webhook firmado al partner registrado (dirección: nuestro sistema → partner)
@@ -19,6 +23,7 @@ Microservicio FastAPI que abstrae pasarelas de pago mediante **Adapter Pattern**
 - `POST /webhooks/{provider}`
   - `provider=partner`: requiere `X-Partner-Id` + `X-Signature` (HMAC con el `secret` del partner)
   - `provider=mock` u otros: usa `PAYMENT_SERVICE_SECRET_FALLBACK`
+  - `provider=stripe`: soporta `type` típico de Stripe y lo normaliza al contrato `payment.success/failed/pending`
 
 ## Headers HMAC
 

@@ -1,4 +1,36 @@
 services:
+  api-gateway:
+    build:
+      context: ./sistema_de_informes/services/api-gateway
+    container_name: api-gateway
+    environment:
+      - REST_API_URL=http://rest-api:8000
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PAYMENT_SERVICE_URL=http://payment-service:8002
+      - AI_ORCHESTRATOR_URL=http://ai-orchestrator:8003
+      - GRAPHQL_URL=http://graphql:4000
+      - WS_URL=ws://ws:8080/ws
+    ports:
+      - "9000:9000"
+    networks:
+      - informes_net
+
+  graphql:
+    build:
+      context: ./sistema_de_informes/services/graphql
+    container_name: graphql
+    environment:
+      - REST_BASE_URL=http://rest-api:8000
+      - GRAPHQL_REQUIRE_AUTH=1
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      - JWT_ALG=${JWT_ALG:-HS256}
+      - REVOKED_SYNC_SECONDS=30
+    ports:
+      - "4000:4000"
+    networks:
+      - informes_net
+
   rest-api:
     build:
       context: ./sistema_de_informes/services/rest-api
@@ -6,6 +38,14 @@ services:
     environment:
       - ALLOW_ORIGINS=*
       - DATABASE_URL=sqlite:////app/app.db
+      - WS_BASE_URL=http://ws:8080
+      - INTERNAL_WEBHOOK_TOKEN=${INTERNAL_WEBHOOK_TOKEN:-dev-internal-token-change-me}
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      - JWT_ALG=${JWT_ALG:-HS256}
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_FROM=${SMTP_FROM:-noreply@local.test}
     ports:
       - "8000:8000"
     networks:
@@ -31,8 +71,8 @@ services:
     container_name: auth-service
     environment:
       AUTH_DATABASE_URL: postgresql://auth_user:auth_pass@auth-db:5432/auth_db
-      JWT_SECRET: please-change-this-secret
-      JWT_ALG: HS256
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-secret}
+      JWT_ALG: ${JWT_ALG:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_MINUTES: 10080
       RATE_LIMIT_LOGIN_ATTEMPTS: 5
@@ -48,13 +88,53 @@ services:
     image: n8nio/n8n:1.70.0
     container_name: n8n
     ports:
-      - "5678:5678"
+      - "5679:5678"
     environment:
       N8N_HOST: localhost
       N8N_PORT: 5678
       N8N_PROTOCOL: http
+      INTERNAL_WEBHOOK_TOKEN: ${INTERNAL_WEBHOOK_TOKEN:-dev-internal-token-change-me}
+      PARTNER_SHARED_SECRET: ${PARTNER_SHARED_SECRET:-dev-partner-secret-change-me}
     volumes:
       - n8n_data:/home/node/.n8n
+    networks:
+      - informes_net
+
+  ws:
+    build:
+      context: ./sistema_de_informes/services/ws
+    container_name: ws
+    ports:
+      - "8080:8080"
+    environment:
+      - WS_REQUIRE_AUTH=1
+      - WS_JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - REVOKED_SYNC_SECONDS=30
+    networks:
+      - informes_net
+
+  frontend:
+    build:
+      context: ./sistema_de_informes/apps/frontend
+    container_name: frontend
+    environment:
+      - VITE_API_REST=http://localhost:9000
+      - VITE_API_GRAPHQL=http://localhost:9000/graphql
+      - VITE_API_PAYMENT=http://localhost:9000
+      - VITE_AI_ORCHESTRATOR=http://localhost:9000/ai
+      - VITE_WS_URL=ws://localhost:9000/ws?room=reports
+    ports:
+      - "3000:3000"
+    networks:
+      - informes_net
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
     networks:
       - informes_net
 

@@ -31,7 +31,7 @@
 
 ### Cómo crearlos en n8n + exportarlos (Semana 3)
 
-1) Abre n8n: `http://localhost:5678`.
+1) Abre n8n: `http://localhost:5679`.
 2) Crea 3 workflows:
   - **Payment Handler**
   - **Partner Handler**

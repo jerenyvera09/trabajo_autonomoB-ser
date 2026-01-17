@@ -71,7 +71,7 @@ Las siguientes URLs corresponden a servicios levantados localmente mediante Dock
   http://localhost:8001/health  
 
 - **n8n (Instalación base):**  
-  http://localhost:5678  
+  http://localhost:5679  
 
 Estas URLs se utilizan solo con fines de validación local y no representan integraciones funcionales ni flujos automatizados en esta etapa del proyecto.
 

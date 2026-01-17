@@ -20,6 +20,16 @@ Tools registradas (mínimo 5):
 - Acción: `create_payment`, `activate_service`
 - Reporte: `report`
 
+## Multimodal (Semana 4)
+
+Entradas adicionales demostrables:
+- PDF: `pdf_inspect` / `pdf_to_partner_payment`
+- Imagen: `image_inspect` (análisis local con Pillow)
+
+## Logs
+
+Se registran eventos mínimos (request + tool) en consola vía `logging`.
+
 Uso típico:
 - Enviar `message` y opcionalmente `toolName` + `toolArgs`.
 

@@ -1,5 +1,6 @@
+[
 {
-  "name": "Scheduled Task - Reporte Diario (Semana 3)",
+  "name": "Scheduled Task - Reporte Diario (Pilar 4 - Semana 4)",
   "nodes": [
     {
       "parameters": {
@@ -54,6 +55,28 @@
         780,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rest-api:8000/api/v1/integrations/send-email",
+        "sendBody": true,
+        "contentType": "json",
+        "headerParametersJson": "={{ { 'X-Internal-Token': $env.INTERNAL_WEBHOOK_TOKEN } }}",
+        "bodyParametersJson": "={{ { to: 'admin@local.test', subject: 'Reporte diario de pagos', body: 'Resumen (' + $json.fecha + '): total=' + $json.total_pagos + ', monto_total=' + $json.monto_total + ', por_estado=' + JSON.stringify($json.por_estado) } }}",
+        "options": {
+          "timeout": 10000,
+          "response": { "responseFormat": "json" }
+        }
+      },
+      "id": "c1f7a2e3-4b5c-4d6e-8f90-1234567890ab",
+      "name": "Enviar Reporte por Email (rest-api -> MailHog)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        300
+      ]
     }
   ],
   "connections": {
@@ -78,6 +101,17 @@
           }
         ]
       ]
+    },
+    "Construir Reporte": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reporte por Email (rest-api -> MailHog)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -90,3 +124,4 @@
   },
   "tags": []
 }
+]

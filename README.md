@@ -14,6 +14,7 @@ Sistema distribuido con arquitectura de microservicios para gestión de reportes
 - [🏛️ Información Académica](#️-información-académica)
 - [👥 Equipo de Desarrollo](#-equipo-de-desarrollo)
 - [🎯 Descripción del Proyecto](#-descripción-del-proyecto)
+- [🧩 Segundo Parcial (4 pilares)](#-segundo-parcial-4-pilares)
 - [🏗️ Arquitectura](#️-arquitectura)
 - [🚀 Inicio Rápido](#-inicio-rápido)
 - [📚 Documentación Semanal](#-documentación-semanal)
@@ -59,6 +60,36 @@ El **Sistema de Reportes de Infraestructura Universitaria** es una aplicación w
 - ✅ **Exportación a PDF** - Generación de reportes en PDF
 - ✅ **Interfaz Moderna** - React + TypeScript con diseño responsivo
 - ✅ **Integración Completa** - 3 servicios backend + frontend trabajando juntos
+
+---
+
+## 🧩 Segundo Parcial (4 pilares)
+
+Este repositorio incluye la extensión del sistema hacia una arquitectura de microservicios con los 4 pilares del segundo parcial:
+
+- **Pilar 1 (Auth Service):** `http://localhost:8001/docs`
+- **Pilar 2 (Payment + B2B webhooks):** `http://localhost:8002/docs`
+- **Pilar 3 (MCP/IA – AI Orchestrator):** `http://localhost:8003/docs`
+- **Pilar 4 (n8n Event Bus):** `http://localhost:5679`
+
+Punto de entrada recomendado (Integración con P1):
+- **API Gateway:** `http://localhost:9000/health`
+
+Servicios auxiliares para evidencias de demo:
+- **MailHog (emails):** `http://localhost:8025`
+- **Partner PHP (demo B2B):** `http://localhost:8088/health`
+- **WebSocket (health/notify):** `http://localhost:8080/health`
+
+**Inicio rápido (Segundo Parcial, recomendado):**
+
+```bash
+docker compose up --build
+```
+
+Documentación de entrega/demos:
+- Semana 5 (presentación): [sistema_de_informes/docs/segundo_parcial/semana_5.md](sistema_de_informes/docs/segundo_parcial/semana_5.md)
+- Exports de n8n (importables): [sistema_de_informes/docs/n8n/exports/README.md](sistema_de_informes/docs/n8n/exports/README.md)
+- Checklist rúbrica 100% (evidencias por archivo): [sistema_de_informes/docs/segundo_parcial/RUBRICA_100_CHECKLIST.md](sistema_de_informes/docs/segundo_parcial/RUBRICA_100_CHECKLIST.md)
 
 ---
 

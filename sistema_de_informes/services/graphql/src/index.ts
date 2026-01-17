@@ -6,6 +6,8 @@
 
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
+import { GraphQLError } from "graphql";
+import jwt from "jsonwebtoken";
 import { typeDefs } from "./schema.js";
 
 // Importar todos los resolvers modulares
@@ -40,11 +42,72 @@ const resolvers = {
   },
 };
 
+const JWT_SECRET = process.env.JWT_SECRET || "please-change-this-secret";
+const JWT_ALG = process.env.JWT_ALG || "HS256";
+const AUTH_SERVICE_URL = (process.env.AUTH_SERVICE_URL || "http://auth-service:8001").replace(/\/$/, "");
+const GRAPHQL_REQUIRE_AUTH = process.env.GRAPHQL_REQUIRE_AUTH === "1";
+const REVOKED_SYNC_SECONDS = Number(process.env.REVOKED_SYNC_SECONDS || "30");
+
+let revokedJTIs = new Set<string>();
+
+async function syncRevokedOnce() {
+  try {
+    const res = await fetch(`${AUTH_SERVICE_URL}/auth/revoked`);
+    if (!res.ok) return;
+    const data: any = await res.json().catch(() => null);
+    const jtis = Array.isArray(data?.jtis) ? data.jtis.filter((x: any) => typeof x === "string") : [];
+    revokedJTIs = new Set(jtis);
+  } catch {
+    // silent
+  }
+}
+
+function startRevokedSync() {
+  void syncRevokedOnce();
+  const every = Math.max(5, Number.isFinite(REVOKED_SYNC_SECONDS) ? REVOKED_SYNC_SECONDS : 30);
+  setInterval(() => void syncRevokedOnce(), every * 1000).unref?.();
+}
+
+function verifyBearerOrThrow(req: any) {
+  const auth = req?.headers?.authorization || req?.headers?.Authorization;
+  const raw = typeof auth === "string" ? auth : "";
+  if (!raw.toLowerCase().startsWith("bearer ")) {
+    throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+  }
+  const token = raw.split(" ", 2)[1];
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET, { algorithms: [JWT_ALG] });
+    const jti = typeof decoded?.jti === "string" ? decoded.jti : "";
+    if (jti && revokedJTIs.has(jti)) {
+      throw new GraphQLError("Token revocado", { extensions: { code: "UNAUTHENTICATED" } });
+    }
+    return decoded;
+  } catch (e: any) {
+    if (e instanceof GraphQLError) throw e;
+    throw new GraphQLError("Token inválido", { extensions: { code: "UNAUTHENTICATED" } });
+  }
+}
+
 // Iniciar servidor Apollo GraphQL
 async function bootstrap() {
   const server = new ApolloServer({ typeDefs, resolvers });
+  startRevokedSync();
   const { url } = await startStandaloneServer(server, {
     listen: { port: 4000 },
+    context: async ({ req }) => {
+      // Pilar 1: validación local (firma/exp) + blacklist sincronizada, sin llamar al auth-service por request.
+      if (GRAPHQL_REQUIRE_AUTH) {
+        const claims = verifyBearerOrThrow(req);
+        return { claims };
+      }
+      // Si no es obligatorio, igual validamos si viene token (para no aceptar tokens rotos)
+      const auth = req?.headers?.authorization || req?.headers?.Authorization;
+      if (typeof auth === "string" && auth.toLowerCase().startsWith("bearer ")) {
+        const claims = verifyBearerOrThrow(req);
+        return { claims };
+      }
+      return { claims: null };
+    },
   });
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗

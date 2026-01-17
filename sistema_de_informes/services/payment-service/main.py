@@ -12,6 +12,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from adapters.mock_adapter import MockAdapter
+from adapters.stripe_adapter import StripeAdapter
 from adapters.provider import PaymentProvider
 from domain.models import Partner
 from domain.schemas import (
@@ -47,6 +48,9 @@ def get_provider() -> PaymentProvider:
     provider = (os.getenv("PAYMENT_PROVIDER") or "mock").lower()
     if provider == "mock":
         return MockAdapter(payment_store, provider_name="mock")
+
+    if provider == "stripe":
+        return StripeAdapter(payment_store)
 
     # No implementado en Semana 2
     raise HTTPException(status_code=400, detail=f"Provider no soportado en Semana 2: {provider}")
@@ -180,8 +184,12 @@ async def receive_webhook(
     normalized = normalize_webhook(provider=provider, payload=payload)
 
     # Aplicar efecto si corresponde al MockAdapter (cambio de estado)
-    if normalized.get("provider") == "mock":
-        adapter = MockAdapter(payment_store, provider_name="mock")
+    if normalized.get("provider") in ("mock", "stripe"):
+        adapter: Any
+        if normalized.get("provider") == "stripe":
+            adapter = StripeAdapter(payment_store)
+        else:
+            adapter = MockAdapter(payment_store, provider_name="mock")
         payment_id = str(normalized.get("paymentId") or "")
         event = str(normalized.get("event") or "")
         if payment_id:
@@ -228,6 +236,60 @@ def send_test_webhook_to_partner(partner_id: str):
         "event": "payment.success",
         "data": {"payment_id": f"pay_{secrets.token_hex(6)}", "amount": 10.0, "currency": "USD"},
         "timestamp": "2026-01-15T00:00:00Z",
+        "source": "payment-service",
+    }
+
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    signature = compute_hmac_sha256(partner.secret, body)
+
+    result = _http_post_json(
+        url=partner.webhook_url,
+        body=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": signature,
+            "X-Partner-Id": partner.id,
+        },
+        timeout_seconds=10,
+    )
+
+    return {
+        "status": "sent",
+        "partnerId": partner.id,
+        "webhookUrl": partner.webhook_url,
+        "event": payload["event"],
+        "downstream": result,
+    }
+
+
+@app.post("/partners/{partner_id}/dispatch")
+async def dispatch_webhook_to_partner(partner_id: str, request: Request):
+    """Pilar 4 (n8n Event Bus): permitir que n8n dispare un webhook al partner.
+
+    Recibe un payload JSON (event + data) y lo envía firmado (HMAC-SHA256) al
+    webhook_url del partner registrado.
+    """
+
+    partner = partner_store.get(partner_id)
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner no registrado")
+
+    try:
+        incoming: Dict[str, Any] = await request.json()
+    except Exception:
+        incoming = {}
+
+    event = incoming.get("event")
+    data = incoming.get("data")
+    if not isinstance(event, str) or not event:
+        raise HTTPException(status_code=400, detail="Field 'event' es requerido")
+    if data is not None and not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Field 'data' debe ser objeto JSON")
+
+    payload = {
+        "event": event,
+        "data": data or {},
+        "timestamp": "2026-01-16T00:00:00Z",
         "source": "payment-service",
     }
 

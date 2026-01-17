@@ -7,7 +7,8 @@ interface Payment {
   currency?: string;
 }
 
-const API_PAYMENT = import.meta.env.VITE_API_PAYMENT || 'http://localhost:8002';
+// Segundo Parcial: por defecto pasa por el API Gateway
+const API_PAYMENT = import.meta.env.VITE_API_PAYMENT || 'http://localhost:9000';
 
 const Payments: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);

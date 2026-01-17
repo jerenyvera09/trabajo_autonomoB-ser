@@ -57,6 +57,37 @@ Funcionalidades principales:
 
 ---
 
+## Pilar 4 – n8n Event Bus (Semana 4)
+Principio aplicado: **"Todo evento externo pasa por n8n"**.
+
+### Workflows exportados (importables)
+Carpeta: `sistema_de_informes/docs/n8n/exports/`
+- `payment_handler.json`
+- `partner_handler.json`
+- `scheduled_task_report.json`
+
+### Qué hace cada workflow (según rúbrica)
+1) **Payment Handler** (`/webhook/payment-handler`)
+	- Recibe webhook externo (pasarela).
+	- **Valida** y normaliza payload.
+	- Crea pago en `payment-service`.
+	- Activa acción interna + **notifica WebSocket** (vía `rest-api`).
+	- Envía **email de confirmación** (SMTP local con MailHog).
+	- Dispara webhook **firmado** al partner (vía `payment-service`).
+
+2) **Partner Handler** (`/webhook/partner-handler`)
+	- Recibe webhook desde un partner.
+	- Verifica **HMAC-SHA256**.
+	- Procesa evento (acción interna vía `rest-api`).
+	- Responde **ACK**.
+
+3) **Scheduled Task - Reporte Diario**
+	- Cron diario.
+	- Consulta pagos y construye reporte.
+	- Envía el reporte por email (MailHog).
+
+---
+
 ## Flujo end-to-end (qué ocurre en la demo)
 1) El usuario sube un **PDF real** (manual desde UI o generado por el script).
 2) La REST API extrae el texto del PDF en `POST /api/v1/pdf/extract`.
@@ -78,12 +109,40 @@ Desde la raíz del repositorio:
 docker compose up -d --build
 ```
 
+Luego abre:
+- n8n: `http://localhost:5679`
+- MailHog (bandeja de emails): `http://localhost:8025`
+
 ### 2) Probar E2E (PowerShell)
 Desde la raíz del repositorio:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File sistema_de_informes/scripts/semana4_integration_test.ps1
 ```
+
+### 2.1) Importar workflows de n8n
+1) Abre n8n: `http://localhost:5679`
+2) Workflows → **Import from File**
+3) Importa los 3 JSON desde `sistema_de_informes/docs/n8n/exports/`
+4) Abre cada workflow y presiona **Activate**
+
+### 2.2) Probar Payment Handler (n8n)
+Ejemplo (desde tu máquina):
+
+```bash
+curl -s -X POST http://localhost:5679/webhook/payment-handler \
+	-H "Content-Type: application/json" \
+	-d "{\"amount\":10,\"currency\":\"USD\",\"partnerId\":\"partner_php_demo\",\"email\":\"demo@local.test\"}" 
+```
+
+Verificaciones:
+- Se crea pago en `payment-service`.
+- Se envía email visible en MailHog (`http://localhost:8025`).
+- Se dispara webhook al partner (ACK en logs/respuesta downstream).
+
+### 2.3) Probar Partner Handler (n8n)
+Puedes usar el partner-php demo para generar un webhook firmado apuntando a n8n:
+- Cambia temporalmente `TARGET_URL` a `http://n8n:5678/webhook/partner-handler` (solo para demo), o ejecuta un `curl` firmado.
 
 ### 3) Probar UI (Frontend)
 
@@ -118,7 +177,10 @@ Luego, en la UI:
 	http://localhost:8088/health
 
 - **n8n (UI):**
-	http://localhost:5678
+	http://localhost:5679
+
+- **MailHog (UI):**
+	http://localhost:8025
   
 	Nota: si el puerto 5678 está ocupado, Docker puede fallar al publicar el puerto. En ese caso, libera el puerto o ajusta el mapeo del servicio n8n.
 

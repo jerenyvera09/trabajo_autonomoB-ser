@@ -15,6 +15,7 @@ from routers.comentario import router as comentarios_router
 from routers.puntuacion import router as puntuaciones_router
 from routers.etiqueta import router as etiquetas_router
 from routers.pdf import router as pdf_router
+from routers.integrations import router as integrations_router
 from entities.reporte import Reporte
 from entities.estado_reporte import EstadoReporte
 from entities.categoria import Categoria
@@ -25,6 +26,7 @@ from entities.comentario import Comentario
 from entities.puntuacion import Puntuacion
 from entities.archivo_adjunto import ArchivoAdjunto
 from entities.etiqueta import Etiqueta
+from deps import start_revoked_sync
 
 app = FastAPI(title="REST API - Semana 4 (FastAPI)")
 
@@ -37,6 +39,12 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+
+
+@app.on_event("startup")
+def _startup_revoked_sync():
+    # Sincronización periódica de tokens revocados (blacklist) desde auth-service.
+    start_revoked_sync()
 
 def to_iso(value: datetime | None) -> str | None:
     if value is None:
@@ -250,3 +258,4 @@ app.include_router(comentarios_router)
 app.include_router(puntuaciones_router)
 app.include_router(etiquetas_router)
 app.include_router(pdf_router)
+app.include_router(integrations_router)

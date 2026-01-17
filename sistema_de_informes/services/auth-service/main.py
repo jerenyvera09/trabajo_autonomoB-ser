@@ -173,6 +173,19 @@ def validate(token: Optional[str] = None, authorization: Optional[str] = Header(
     return ValidateOut(valid=True, claims=claims)
 
 
+@app.get("/auth/revoked", response_model=dict)
+def revoked_snapshot(db: Session = Depends(get_db)):
+    """Snapshot interno de tokens revocados.
+
+    Se usa para que otros microservicios mantengan una blacklist local mediante
+    sincronización periódica (sin consultar al Auth Service en cada request).
+    """
+
+    rows = db.query(RevokedToken.jti).all()
+    jtis = [r[0] for r in rows if r and r[0]]
+    return {"count": len(jtis), "jtis": jtis}
+
+
 @app.get("/")
 def root():
     return {"status": "ok", "service": "auth-service"}

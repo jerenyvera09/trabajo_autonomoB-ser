@@ -4,7 +4,12 @@ Este documento define el contrato mínimo de eventos y seguridad (HMAC) para int
 
 ## Partner utilizado en Semana 3
 
-Para cumplir el requisito de bidireccionalidad sin depender de un grupo externo, se usa un **partner simulado** implementado en PHP en `backend_php/`.
+Para cumplir el requisito de bidireccionalidad cuando no se consigue un grupo externo (según indicación del docente), se usa un **partner de demostración** implementado en PHP en `backend_php/`.
+
+Este partner representa un sistema B2B externo y permite evidenciar:
+- Registro de partner
+- Firma/verificación HMAC
+- Flujo bidireccional (nuestro sistema ↔ partner)
 
 ## Eventos soportados (Semana 3)
 

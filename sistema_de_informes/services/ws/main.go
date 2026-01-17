@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -34,7 +35,81 @@ var (
 	allowedOrigins = parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS")) // CSV o vacío para permitir todos (dev)
 	requireAuth    = os.Getenv("WS_REQUIRE_AUTH") == "1"
 	jwtSecret      = os.Getenv("WS_JWT_SECRET")
+	authServiceURL = strings.TrimRight(os.Getenv("AUTH_SERVICE_URL"), "/")
+
+	revokedMu   sync.RWMutex
+	revokedJTIs = make(map[string]struct{})
 )
+
+func setRevoked(jtis []string) {
+	revokedMu.Lock()
+	defer revokedMu.Unlock()
+	newMap := make(map[string]struct{}, len(jtis))
+	for _, j := range jtis {
+		j = strings.TrimSpace(j)
+		if j != "" {
+			newMap[j] = struct{}{}
+		}
+	}
+	revokedJTIs = newMap
+}
+
+func isRevoked(jti string) bool {
+	if strings.TrimSpace(jti) == "" {
+		return false
+	}
+	revokedMu.RLock()
+	_, ok := revokedJTIs[jti]
+	revokedMu.RUnlock()
+	return ok
+}
+
+func startRevokedSync() {
+	if authServiceURL == "" {
+		authServiceURL = "http://auth-service:8001"
+	}
+	interval := 30 * time.Second
+	if v := os.Getenv("REVOKED_SYNC_SECONDS"); strings.TrimSpace(v) != "" {
+		if n, err := time.ParseDuration(v + "s"); err == nil {
+			if n < 5*time.Second {
+				n = 5 * time.Second
+			}
+			interval = n
+		}
+	}
+
+	go func() {
+		for {
+			func() {
+				resp, err := http.Get(authServiceURL + "/auth/revoked")
+				if err != nil {
+					return
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode >= 400 {
+					return
+				}
+				b, _ := ioutil.ReadAll(resp.Body)
+				var decoded map[string]interface{}
+				if err := json.Unmarshal(b, &decoded); err != nil {
+					return
+				}
+				raw, ok := decoded["jtis"].([]interface{})
+				if !ok {
+					return
+				}
+				var jtis []string
+				for _, it := range raw {
+					if s, ok := it.(string); ok {
+						jtis = append(jtis, s)
+					}
+				}
+				setRevoked(jtis)
+			}()
+			time.Sleep(interval)
+		}
+	}()
+}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -91,13 +166,23 @@ func authOK(r *http.Request) bool {
 	if token == "" || jwtSecret == "" {
 		return false
 	}
-	_, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return []byte(jwtSecret), nil
 	})
-	return err == nil
+	if err != nil || parsed == nil || !parsed.Valid {
+		return false
+	}
+	if claims, ok := parsed.Claims.(jwt.MapClaims); ok {
+		if jtiVal, ok := claims["jti"].(string); ok {
+			if isRevoked(jtiVal) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func addToRoom(room string, c *websocket.Conn) {
@@ -325,6 +410,9 @@ func notifyNewReport(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	mux := http.NewServeMux()
+
+	// Sincronización periódica de blacklist (sin consultar auth-service en cada request)
+	startRevokedSync()
 
 	// Endpoint WS (handshake: ws://host:port/ws?room=reports[&token=...])
 	mux.HandleFunc("/ws", manejarConexiones)

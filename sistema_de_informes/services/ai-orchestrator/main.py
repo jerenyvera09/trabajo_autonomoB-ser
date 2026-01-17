@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 from typing import Dict
 
 from dotenv import load_dotenv
@@ -19,8 +20,12 @@ from tools.query_payment_tool import QueryPaymentTool
 from tools.query_user_tool import QueryUserTool
 from tools.report_tool import ReportTool
 from tools.pdf_tool import PdfInspectTool, PdfToPartnerPaymentTool
+from tools.image_tool import ImageInspectTool
 
 load_dotenv()
+
+logging.basicConfig(level=(os.getenv("LOG_LEVEL") or "INFO").upper())
+logger = logging.getLogger("ai-orchestrator")
 
 app = FastAPI(title="AI Orchestrator")
 
@@ -60,7 +65,40 @@ TOOLS = {
     # Semana 4 (multimodal PDF)
     "pdf_inspect": PdfInspectTool(),
     "pdf_to_partner_payment": PdfToPartnerPaymentTool(),
+    # Semana 4 (multimodal Imagen)
+    "image_inspect": ImageInspectTool(),
 }
+
+
+@app.get("/tools")
+def list_tools():
+    """Lista las herramientas MCP disponibles.
+
+    Esto permite evidenciar el "MCP Server con Tools" a nivel API.
+    """
+
+    out = []
+    for key, tool in TOOLS.items():
+        out.append(
+            {
+                "key": key,
+                "name": getattr(tool, "name", key),
+                "kind": getattr(tool, "kind", "unknown"),
+            }
+        )
+    return {"count": len(out), "tools": sorted(out, key=lambda x: str(x.get("key")))}
+
+
+@app.get("/tools/{tool_key}")
+def get_tool(tool_key: str):
+    tool = TOOLS.get((tool_key or "").strip().lower())
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool no encontrada")
+    return {
+        "key": tool_key,
+        "name": getattr(tool, "name", tool_key),
+        "kind": getattr(tool, "kind", "unknown"),
+    }
 
 
 @app.get("/")
@@ -75,6 +113,17 @@ def health():
 
 @app.post("/chat", response_model=ChatOut)
 def chat(payload: ChatIn):
+    logger.info(
+        json.dumps(
+            {
+                "event": "chat.request",
+                "toolName": payload.toolName,
+                "hasToolArgs": bool(payload.toolArgs),
+                "message_len": len(payload.message or ""),
+            },
+            ensure_ascii=False,
+        )
+    )
     llm = get_llm_provider()
 
     tools_used = []
@@ -86,6 +135,16 @@ def chat(payload: ChatIn):
             raise HTTPException(status_code=400, detail=f"Tool no soportada: {payload.toolName}")
 
         result = tool.run(payload.toolArgs)
+        logger.info(
+            json.dumps(
+                {
+                    "event": "chat.tool",
+                    "tool": tool_key,
+                    "ok": bool(isinstance(result, dict) and result.get("ok") is not False),
+                },
+                ensure_ascii=False,
+            )
+        )
         if not isinstance(result, dict):
             raise HTTPException(status_code=500, detail=f"Tool {tool_key} devolvió un tipo inválido (se esperaba dict)")
         tools_used.append(ToolResult(tool=tool.name, result=result))

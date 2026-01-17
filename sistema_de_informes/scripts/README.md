@@ -6,6 +6,15 @@ Colección de scripts Python para automatización, testing y mantenimiento del s
 
 ## 📋 Scripts disponibles
 
+### PowerShell (demos por semana)
+
+Estos scripts están pensados para **Windows** y para ejecutar demos end-to-end rápidamente:
+
+- `semana3_ai_orchestrator_smoke.ps1` – smoke test de AI Orchestrator
+- `semana3_partner_demo.ps1` / `semana3_partner_tests.ps1` – pruebas de interoperabilidad B2B
+- `semana4_integration_test.ps1` – test de integración Semana 4
+- `semana5_demo.ps1` – demo final Semana 5 (presentación)
+
 ### 1. `check_supabase.py` - Verificación de conexión a base de datos
 
 **Propósito:** Verificar que la conexión a Supabase/PostgreSQL esté configurada correctamente.
