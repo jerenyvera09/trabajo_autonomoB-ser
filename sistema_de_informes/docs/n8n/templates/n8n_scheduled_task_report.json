@@ -1,36 +1,127 @@
 {
-  "name": "Scheduled Task - Reporte Diario (Mock)",
+  "name": "Scheduled Task - Reporte Diario (Pilar 4 - Semana 4)",
   "nodes": [
     {
-      "id": "1",
-      "type": "cron",
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 8,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "f7fca4e3-5e65-4f0b-b511-6c65c95c7a6b",
       "name": "Cron Diario",
-      "parameters": {
-        "cronExpression": "0 8 * * *"
-      }
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
     },
     {
-      "id": "2",
-      "type": "function",
-      "name": "Generar Reporte (Mock)",
       "parameters": {
-        "functionCode": "// Simula generación de reporte diario.\nreturn { reporte: 'Reporte diario mock generado', fecha: new Date().toISOString() };"
-      }
+        "method": "GET",
+        "url": "http://payment-service:8002/payments",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "d90d8b45-4e67-4b3c-8c38-3c7eb5f9d9a2",
+      "name": "Traer Pagos (payment-service)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        520,
+        300
+      ]
     },
     {
-      "id": "3",
-      "type": "emailSend",
-      "name": "Enviar Reporte",
       "parameters": {
-        "to": "admin@example.com",
-        "subject": "Reporte Diario (mock)",
-        "body": "Adjunto reporte diario mock."
-      }
+        "jsCode": "// Genera un resumen simple para evidenciar el workflow.\nconst data = items?.[0]?.json;\nconst pagos = Array.isArray(data) ? data : (data?.payments || []);\n\nconst total = pagos.length;\nconst porEstado = {};\nlet montoTotal = 0;\n\nfor (const p of pagos) {\n  const estado = String(p.status || 'unknown');\n  porEstado[estado] = (porEstado[estado] || 0) + 1;\n  montoTotal += Number(p.amount || 0);\n}\n\nreturn [{ json: { total_pagos: total, monto_total: montoTotal, por_estado: porEstado, fecha: new Date().toISOString() } }];"
+      },
+      "id": "3d1b3d6a-54f8-47f9-8b9e-043e5d7c44e4",
+      "name": "Construir Reporte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rest-api:8000/api/v1/integrations/send-email",
+        "sendBody": true,
+        "contentType": "json",
+        "headerParametersJson": "={{ { 'X-Internal-Token': $env.INTERNAL_WEBHOOK_TOKEN } }}",
+        "bodyParametersJson": "={{ { to: 'admin@local.test', subject: 'Reporte diario de pagos', body: 'Resumen (' + $json.fecha + '): total=' + $json.total_pagos + ', monto_total=' + $json.monto_total + ', por_estado=' + JSON.stringify($json.por_estado) } }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "c1f7a2e3-4b5c-4d6e-8f90-1234567890ab",
+      "name": "Enviar Reporte por Email (rest-api -> MailHog)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        300
+      ]
     }
   ],
-  "connections": [
-    { "from": "1", "to": "2" },
-    { "from": "2", "to": "3" }
-  ],
-  "description": "Borrador/plantilla (no export real de n8n)."
+  "connections": {
+    "Cron Diario": {
+      "main": [
+        [
+          {
+            "node": "Traer Pagos (payment-service)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traer Pagos (payment-service)": {
+      "main": [
+        [
+          {
+            "node": "Construir Reporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Reporte": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reporte por Email (rest-api -> MailHog)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
 }

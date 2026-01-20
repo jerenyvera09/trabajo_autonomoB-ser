@@ -1,56 +1,194 @@
 {
-  "name": "Payment Handler (MockAdapter)",
+  "name": "Payment Handler (Pilar 4 - Semana 4)",
   "nodes": [
     {
-      "id": "1",
-      "type": "webhook",
+      "parameters": {
+        "path": "payment-handler",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "3f4a9e2d-7f1e-4d7b-8f2c-6d0a2b9b5b01",
       "name": "Webhook Entrada",
-      "parameters": {
-        "path": "payment-handler-mock",
-        "method": "POST"
-      }
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
     },
     {
-      "id": "2",
-      "type": "function",
-      "name": "Validar Payload",
       "parameters": {
-        "functionCode": "// Validación mock. Aquí se validaría el payload real.\nreturn { valid: true, payload: items };"
-      }
+        "jsCode": "// 1) Validar firma HMAC (requisito: todos los webhooks deben firmarse/verificarse).\n// 2) Validar + normalizar payload de webhook externo (pasarela).\n\nconst crypto = require('crypto');\n\nconst headers = $headers || {};\nconst providedRaw = String(headers['x-signature'] || headers['X-Signature'] || '').trim();\nif (!providedRaw) {\n  throw new Error('Falta firma HMAC (X-Signature)');\n}\n\nconst provided = providedRaw.toLowerCase().startsWith('sha256=')\n  ? providedRaw.split('=', 2)[1].trim().toLowerCase()\n  : providedRaw.trim().toLowerCase();\n\nconst secret = $env.PAYMENT_SERVICE_SECRET_FALLBACK || 'dev-secret-change-me';\nconst body = items?.[0]?.json ?? {};\n\n// Nota: para esta demo se firma sobre el JSON normalizado.\nconst raw = JSON.stringify(body);\nconst expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\n\nif (expected !== provided) {\n  throw new Error('Firma HMAC inválida');\n}\n\n// Payload requerido\nconst amountRaw = body.amount ?? body.monto;\nconst currencyRaw = body.currency ?? body.moneda;\n\nconst amount = Number(amountRaw);\nconst currency = String(currencyRaw || '').trim().toUpperCase();\n\nif (!Number.isFinite(amount) || amount <= 0) {\n  throw new Error('Payload inválido: amount debe ser número > 0');\n}\nif (!currency) {\n  throw new Error('Payload inválido: currency es requerido');\n}\n\n// Opcionales\nconst partnerId = String(body.partnerId ?? body.partner_id ?? 'partner_php_demo');\nconst emailTo = String(body.email ?? body.emailTo ?? 'demo@local.test');\n\nreturn [{\n  json: {\n    amount,\n    currency,\n    partnerId,\n    emailTo,\n    source: 'n8n-payment-handler'\n  }\n}];"
+      },
+      "id": "c843c4b0-59f0-4c33-9e8c-6d2cfbd5147a",
+      "name": "Validar + Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
     },
     {
-      "id": "3",
-      "type": "function",
-      "name": "Activar Servicio/Reserva",
       "parameters": {
-        "functionCode": "// Simula activación de servicio/reserva.\nreturn { status: 'activated', ...items };"
-      }
+        "method": "POST",
+        "url": "http://payment-service:8002/payments/checkout",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParametersJson": "={{ $json }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "4f4d5d8b-3816-4b55-a6c9-5ea43d2d6dfb",
+      "name": "Crear Pago (payment-service)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        300
+      ]
     },
     {
-      "id": "4",
-      "type": "websocket",
-      "name": "Notificar WebSocket",
       "parameters": {
-        "url": "ws://localhost:8004/notify",
-        "message": "Pago procesado y servicio activado (mock)"
-      }
+        "method": "POST",
+        "url": "http://rest-api:8000/api/v1/integrations/activate",
+        "sendBody": true,
+        "contentType": "json",
+        "headerParametersJson": "={{ { 'X-Internal-Token': $env.INTERNAL_WEBHOOK_TOKEN } }}",
+        "bodyParametersJson": "={{ { event: 'payment.success', paymentId: $json.id, partnerId: $node['Validar + Normalizar Payload'].json.partnerId, amount: $json.amount, currency: $json.currency, extra: { provider: $json.provider, status: $json.status } } }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "f67cfb77-3f26-4b7b-9b0a-8f6f2b9d0c11",
+      "name": "Activar Servicio + Notificar WS (rest-api)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        300
+      ]
     },
     {
-      "id": "5",
-      "type": "emailSend",
-      "name": "Enviar Email Confirmación",
       "parameters": {
-        "to": "demo@example.com",
-        "subject": "Confirmación de pago (mock)",
-        "body": "Su pago ha sido procesado y el servicio activado. (mock)"
-      }
+        "method": "POST",
+        "url": "http://rest-api:8000/api/v1/integrations/send-email",
+        "sendBody": true,
+        "contentType": "json",
+        "headerParametersJson": "={{ { 'X-Internal-Token': $env.INTERNAL_WEBHOOK_TOKEN } }}",
+        "bodyParametersJson": "={{ { to: $node['Validar + Normalizar Payload'].json.emailTo, subject: 'Confirmación de pago', body: 'Pago confirmado: ' + $node['Validar + Normalizar Payload'].json.currency + ' ' + $node['Validar + Normalizar Payload'].json.amount + ' (paymentId=' + $node['Crear Pago (payment-service)'].json.id + ')' } }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "8c58bb1a-2f2a-4e22-9d0e-7d1a3f8c2a20",
+      "name": "Enviar Email (rest-api -> MailHog)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://payment-service:8002/partners/' + $node['Validar + Normalizar Payload'].json.partnerId + '/dispatch' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParametersJson": "={{ { event: 'payment.success', data: { payment_id: $node['Crear Pago (payment-service)'].json.id, amount: $node['Crear Pago (payment-service)'].json.amount, currency: $node['Crear Pago (payment-service)'].json.currency } } }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "3b13c8a2-4f57-4c9f-bb1a-2a62c7f3a113",
+      "name": "Disparar Webhook al Partner (payment-service)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1560,
+        300
+      ]
     }
   ],
-  "connections": [
-    { "from": "1", "to": "2" },
-    { "from": "2", "to": "3" },
-    { "from": "3", "to": "4" },
-    { "from": "3", "to": "5" }
-  ],
-  "description": "Borrador/plantilla (no export real de n8n)."
+  "connections": {
+    "Webhook Entrada": {
+      "main": [
+        [
+          {
+            "node": "Validar + Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar + Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "Crear Pago (payment-service)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Pago (payment-service)": {
+      "main": [
+        [
+          {
+            "node": "Activar Servicio + Notificar WS (rest-api)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activar Servicio + Notificar WS (rest-api)": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email (rest-api -> MailHog)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Email (rest-api -> MailHog)": {
+      "main": [
+        [
+          {
+            "node": "Disparar Webhook al Partner (payment-service)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
 }

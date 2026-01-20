@@ -93,6 +93,8 @@ services:
       N8N_HOST: localhost
       N8N_PORT: 5678
       N8N_PROTOCOL: http
+      # En local usamos HTTP; si la cookie se marca como Secure el navegador no la guarda y el login falla.
+      N8N_SECURE_COOKIE: "false"
       INTERNAL_WEBHOOK_TOKEN: ${INTERNAL_WEBHOOK_TOKEN:-dev-internal-token-change-me}
       PARTNER_SHARED_SECRET: ${PARTNER_SHARED_SECRET:-dev-partner-secret-change-me}
     volumes:

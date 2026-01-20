@@ -438,6 +438,15 @@ function App() {
     fetchAnalyticsGraphQL() // 🆕 Cargar queries analíticas
   }, [])
 
+  const safeText = (value: unknown, fallback: string) => {
+    if (typeof value !== 'string') return fallback
+    const trimmed = value.trim()
+    return trimmed ? trimmed : fallback
+  }
+
+  const toSlug = (value: unknown, fallback: string) =>
+    safeText(value, fallback).toLowerCase().replace(/\s+/g, '-')
+
   return (
     <div className="container">
       {/* =====================
@@ -657,8 +666,8 @@ function App() {
             <h3 className="report-title">{report.title}</h3>
             <p className="report-description">{report.description}</p>
             <div className="report-meta">
-              <span className={`status-badge status-${report.status.toLowerCase().replace(' ', '-')}`}>
-                {report.status}
+              <span className={`status-badge status-${toSlug((report as any)?.status, 'abierto')}`}>
+                {safeText((report as any)?.status, 'abierto')}
               </span>
               {report.priority && <span>Prioridad: {report.priority}</span>}
               {report.location && <span>📍 {report.location}</span>}
@@ -820,8 +829,8 @@ function App() {
           <div className="report-meta" style={{ gap: '1rem', display: 'flex', flexWrap: 'wrap' }}>
             <span><strong>Total reportes:</strong> {analyticsTotal}</span>
             {analyticsByStatus?.map(k => (
-              <span key={`kpi-${k.clave}`} className={`status-badge status-${k.clave.toLowerCase().replace(/\s+/g,'-')}`}>
-                {k.clave}: {k.valor}
+              <span key={`kpi-${String((k as any)?.clave ?? 'unknown')}`} className={`status-badge status-${toSlug((k as any)?.clave, 'otro')}`}>
+                {safeText((k as any)?.clave, 'Otro')}: {k.valor}
               </span>
             ))}
           </div>
@@ -840,8 +849,8 @@ function App() {
             <h3 className="report-title">{report.title}</h3>
             <p className="report-description">{report.description}</p>
             <div className="report-meta">
-              <span className={`status-badge status-${report.status?.toLowerCase().replace(' ', '-') || 'abierto'}`}>
-                {report.status || 'N/A'}
+              <span className={`status-badge status-${toSlug((report as any)?.status, 'abierto')}`}>
+                {safeText((report as any)?.status, 'N/A')}
               </span>
               {report.priority && <span>Prioridad: {report.priority}</span>}
             </div>

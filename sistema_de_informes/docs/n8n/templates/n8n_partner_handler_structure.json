@@ -1,35 +1,91 @@
 {
-  "name": "Partner Handler (Semana 3 - Estructura)",
+  "name": "Partner Handler (Pilar 4 - Semana 4)",
   "nodes": [
     {
-      "id": "1",
-      "type": "webhook",
-      "name": "Webhook Partner",
       "parameters": {
         "path": "partner-handler",
-        "method": "POST"
-      }
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "d64c56c7-2b07-4fa9-9b53-f5bd7c089ea4",
+      "name": "Webhook Partner",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
     },
     {
-      "id": "2",
-      "type": "function",
-      "name": "Validar HMAC (Guía)",
       "parameters": {
-        "functionCode": "// Semana 3: guía para validar HMAC-SHA256 (X-Signature) en n8n.\n// NOTA: Este JSON es plantilla de estructura (no export oficial de n8n).\n//\n// Para validación real en n8n, usa un nodo 'Code' y el módulo crypto:\n// const crypto = require('crypto');\n// const secret = $env.PARTNER_SHARED_SECRET;\n// const raw = JSON.stringify($json);\n// const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\n// const provided = ($headers['x-signature'] || '').trim().toLowerCase();\n// if (expected !== provided) throw new Error('HMAC inválido');\nreturn { hmac_valid: true, ...items };"
-      }
+        "jsCode": "// 1) Verificar HMAC-SHA256 (hex) del webhook entrante desde el partner.\n// Para el partner-php demo, la firma se calcula sobre el JSON string (sin espacios).\n\nconst crypto = require('crypto');\n\nconst secret = $env.PARTNER_SHARED_SECRET || 'dev-partner-secret-change-me';\nconst headers = $headers || {};\nconst provided = String(headers['x-signature'] || headers['X-Signature'] || '').trim().toLowerCase();\n\nconst payload = items?.[0]?.json ?? {};\nconst raw = JSON.stringify(payload);\nconst expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\n\nif (!provided || expected !== provided) {\n  throw new Error('HMAC inválido');\n}\n\nreturn [{ json: { ok: true, payload } }];"
+      },
+      "id": "4b6ac6c2-4a55-4ccf-b65f-9f03765b1bd9",
+      "name": "Validar HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
     },
     {
-      "id": "3",
-      "type": "function",
-      "name": "Procesar Evento (Simulado)",
       "parameters": {
-        "functionCode": "// Semana 3: procesar evento recibido (mock).\nreturn { processed: true, ...items };"
-      }
+        "method": "POST",
+        "url": "http://rest-api:8000/api/v1/integrations/activate",
+        "sendBody": true,
+        "contentType": "json",
+        "headerParametersJson": "={{ { 'X-Internal-Token': $env.INTERNAL_WEBHOOK_TOKEN } }}",
+        "bodyParametersJson": "={{ { event: $json.payload.event || 'partner.event', partnerId: ($headers['x-partner-id'] || $headers['X-Partner-Id'] || null), extra: $json.payload } }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "9b43d2a1-21b1-4f2c-8e5d-1b2c3d4e5f60",
+      "name": "Procesar Evento (rest-api)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        300
+      ]
     }
   ],
-  "connections": [
-    { "from": "1", "to": "2" },
-    { "from": "2", "to": "3" }
-  ],
-  "description": "Borrador/plantilla (no export real de n8n)."
+  "connections": {
+    "Webhook Partner": {
+      "main": [
+        [
+          {
+            "node": "Validar HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar HMAC": {
+      "main": [
+        [
+          {
+            "node": "Procesar Evento (rest-api)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
 }
